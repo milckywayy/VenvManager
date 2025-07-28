@@ -1,0 +1,11 @@
+[project]
+name = "venvmanager"
+version = "0.1.0"
+description = "A dynamic system for managing virtual environments"
+requires-python = ">=3.13"
+dependencies = [
+    "flask>=3.1.1",
+    "dotenv>=0.9.9",
+    "waitress==3.0.2",
+    "gunicorn==23.0.0"
+]
