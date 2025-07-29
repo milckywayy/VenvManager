@@ -9,17 +9,14 @@ client = docker.from_env()
 
 
 class Environment(ABC):
-    def __init__(self, name: str, exposed_ports: list, ports: list, args: dict):
+    def __init__(self, name: str, exposed_ports: list, host_ports: list, args: dict):
         # TODO add network parsing
         self.name = name
-        self.exposed_ports = exposed_ports
-        self.ports = ports
-        self.args = args
 
-        if len(ports) == 0 or len(ports) != len(exposed_ports):
+        if len(host_ports) == 0 or len(host_ports) != len(exposed_ports):
             raise ValueError("Ports and exposed ports must have same length.")
 
-        self.ports = ports
+        self.host_ports = host_ports
         self.exposed_ports = exposed_ports
         self.args = args
 
@@ -69,10 +66,10 @@ class DockerEnvironment(Environment):
         name: str,
         image: str,
         exposed_ports: list,
-        ports: list,
+        host_ports: list,
         args: dict
     ):
-        super().__init__(name, exposed_ports, ports, args)
+        super().__init__(name, exposed_ports, host_ports, args)
         self.image = image
 
         self.container = None
@@ -83,7 +80,7 @@ class DockerEnvironment(Environment):
                 self.image,
                 detach=True,
                 ports={f'{exposed_port}/tcp': host_port for exposed_port, host_port in
-                       zip(self.exposed_ports, self.ports)},
+                       zip(self.host_ports, self.exposed_ports)},
                 name=self.name,
                 environment={**self.args},
             )
@@ -128,10 +125,10 @@ class VMEnvironment(Environment):
             self,
             name: str,
             exposed_ports: list,
-            ports: list,
+            host_ports: list,
             args: dict
     ):
-        super().__init__(name, exposed_ports, ports, args)
+        super().__init__(name, exposed_ports, host_ports, args)
 
     def start(self):
         pass
@@ -153,3 +150,20 @@ class VMEnvironment(Environment):
 
     def destroy(self):
         pass
+
+
+if __name__ == "__main__":
+    env = DockerEnvironment(
+        name="test-env",
+        image="docker-test-image",
+        exposed_ports=[5000],
+        host_ports=[8080],
+        args={"FLAG": "TEST123"}
+    )
+
+    env.start()
+    print(f"Status: {env.status()}")
+    print(f"Access info: {env.get_access_info()}")
+
+    input("Naciśnij Enter aby zatrzymać kontener...")
+    env.stop()
