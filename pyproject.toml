@@ -7,5 +7,6 @@ dependencies = [
     "flask>=3.1.1",
     "dotenv>=0.9.9",
     "waitress==3.0.2",
-    "gunicorn==23.0.0"
+    "gunicorn==23.0.0",
+    "docker==7.1.0"
 ]
