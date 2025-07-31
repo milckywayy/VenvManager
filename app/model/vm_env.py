@@ -9,11 +9,11 @@ class VMEnvironment(Environment):
     def __init__(
             self, name: str,
             template_path: str,
-            exposed_ports: list,
-            host_ports: list,
+            internal_ports: list,
+            published_ports: list,
             args: dict
     ):
-        super().__init__(name, exposed_ports, host_ports, args)
+        super().__init__(name, internal_ports, published_ports, args)
         self.template_path = template_path
 
         self.domain = None
@@ -69,8 +69,8 @@ if __name__ == "__main__":
     vm = VMEnvironment(
         name="ctf-vm01",
         template_path="/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml",
-        exposed_ports=[22],
-        host_ports=[10022],
+        internal_ports=[22],
+        published_ports=[10022],
         args={'FLAG': 'TEST123'}
     )
 

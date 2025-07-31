@@ -1,7 +1,9 @@
+from app.model.networking import create_docker_network, remove_docker_network
 from environment import Environment
 from app.model.status import EnvStatus
 import docker
 from docker.errors import ImageNotFound, APIError, DockerException, ContainerError
+from docker.models.networks import Network
 
 docker_client = docker.from_env()
 
@@ -11,12 +13,14 @@ class DockerEnvironment(Environment):
             self,
             name: str,
             image: str,
-            exposed_ports: list,
-            host_ports: list,
+            internal_ports: list,
+            published_ports: list,
+            network: Network,
             args: dict
     ):
-        super().__init__(name, exposed_ports, host_ports, args)
+        super().__init__(name, internal_ports, published_ports, args)
         self.image = image
+        self.network = network
 
         self.container = None
 
@@ -25,9 +29,9 @@ class DockerEnvironment(Environment):
             self.container = docker_client.containers.run(
                 self.image,
                 detach=True,
-                ports={f'{exposed_port}/tcp': host_port for exposed_port, host_port in
-                       zip(self.host_ports, self.exposed_ports)},
-                name=self.name,
+                ports={f'{internal}/tcp': published for internal, published in
+                       zip(self.internal_ports, self.published_ports)},
+            name=self.name,
                 environment={**self.args},
             )
         # TODO replace prints with custom exception
@@ -41,7 +45,7 @@ class DockerEnvironment(Environment):
             print(f"Unexpected Docker error while starting container '{self.name}': {e}")
 
     def on_started(self):
-        pass
+        self.network.connect(self.container.id)
 
     def stop(self):
         self.container.stop()
@@ -68,17 +72,39 @@ class DockerEnvironment(Environment):
 
 
 if __name__ == "__main__":
-    env = DockerEnvironment(
-        name="test",
+    bridge_name = 'venvbr0'
+    network_name = 'docker-test'
+    docker_network = create_docker_network(docker_client, network_name, bridge_name)
+    print(docker_network)
+
+    container1 = DockerEnvironment(
+        name="test1",
         image="test",
-        exposed_ports=[5000],
-        host_ports=[80],
+        internal_ports=[80],
+        published_ports=[5000],
+        network=docker_network,
         args={"FLAG": "TEST123"}
     )
 
-    env.start()
-    print(f"Status: {env.status()}")
-    print(f"Access info: {env.get_access_info()}")
+    container2 = DockerEnvironment(
+        name="test2",
+        image="ubuntu-ssh",
+        internal_ports=[22],
+        published_ports=[5001],
+        network=docker_network,
+        args={"FLAG": "TEST123"}
+    )
+    print(container2)
 
-    input("Naciśnij Enter aby zatrzymać kontener...")
-    env.destroy()
+    container1.start()
+    container1.on_started()
+
+    container2.start()
+    container2.on_started()
+
+    input("Naciśnij Enter aby usunąć kontener...")
+
+    container1.destroy()
+    container2.destroy()
+
+    remove_docker_network(docker_network)

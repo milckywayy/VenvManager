@@ -4,15 +4,15 @@ from flask import current_app
 
 
 class Environment(ABC):
-    def __init__(self, name: str, exposed_ports: list, host_ports: list, args: dict):
+    def __init__(self, name: str, internal_ports: list, published_ports: list, args: dict):
         # TODO add network parsing
         self.name = name
 
-        if len(host_ports) == 0 or len(host_ports) != len(exposed_ports):
+        if len(internal_ports) == 0 or len(internal_ports) != len(published_ports):
             raise ValueError("Ports and exposed ports must have same length.")
 
-        self.host_ports = host_ports
-        self.exposed_ports = exposed_ports
+        self.internal_ports = internal_ports
+        self.published_ports = published_ports
         self.args = args
 
         self.creation_time = datetime.now()
