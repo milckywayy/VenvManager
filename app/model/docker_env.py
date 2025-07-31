@@ -1,4 +1,4 @@
-from app.model.networking import create_docker_network, remove_docker_network
+from app.utils.networking import create_docker_network, remove_docker_network
 from environment import Environment
 from app.model.status import EnvStatus
 import docker
@@ -13,6 +13,7 @@ class DockerEnvironment(Environment):
             self,
             name: str,
             image: str,
+            index: int,
             internal_ports: list,
             published_ports: list,
             network: Network,
@@ -21,6 +22,7 @@ class DockerEnvironment(Environment):
         super().__init__(name, internal_ports, published_ports, args)
         self.image = image
         self.network = network
+        self.index = index
 
         self.container = None
 
@@ -31,7 +33,7 @@ class DockerEnvironment(Environment):
                 detach=True,
                 ports={f'{internal}/tcp': published for internal, published in
                        zip(self.internal_ports, self.published_ports)},
-            name=self.name,
+                name=self.name,
                 environment={**self.args},
             )
         # TODO replace prints with custom exception
@@ -45,7 +47,7 @@ class DockerEnvironment(Environment):
             print(f"Unexpected Docker error while starting container '{self.name}': {e}")
 
     def on_started(self):
-        self.network.connect(self.container.id)
+        self.network.connect(self.container.id, ipv4_address=f"10.10.10.{str(self.index + 10)}")
 
     def stop(self):
         self.container.stop()
@@ -80,6 +82,7 @@ if __name__ == "__main__":
     container1 = DockerEnvironment(
         name="test1",
         image="test",
+        index=0,
         internal_ports=[80],
         published_ports=[5000],
         network=docker_network,
@@ -89,6 +92,7 @@ if __name__ == "__main__":
     container2 = DockerEnvironment(
         name="test2",
         image="ubuntu-ssh",
+        index=1,
         internal_ports=[22],
         published_ports=[5001],
         network=docker_network,

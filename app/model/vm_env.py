@@ -15,11 +15,13 @@ class VMEnvironment(Environment):
             base_image_path: str,
             internal_ports: list,
             published_ports: list,
+            network_name: str,
             args: dict
     ):
         super().__init__(name, internal_ports, published_ports, args)
         self.template_path = template_path
         self.base_image_path = base_image_path
+        self.network_name = network_name
 
         Config.OVERLAY_PATH.mkdir(parents=True, exist_ok=True)
         self.image_path = str(Config.OVERLAY_PATH / f"{name}.qcow2")
@@ -38,6 +40,7 @@ class VMEnvironment(Environment):
         xml = xml.replace("{{VM_NAME}}", self.name)
         xml = xml.replace("{{DISK_IMAGE}}", self.image_path)
         xml = xml.replace("{{VM_UUID}}", str(uuid.uuid4()))
+        xml = xml.replace("{{NETWORK_NAME}}", self.network_name)
         return xml
 
     def start(self):
@@ -86,6 +89,7 @@ if __name__ == "__main__":
         base_image_path="/var/lib/libvirt/images/ubuntu18.04.qcow2",
         internal_ports=[22],
         published_ports=[10022],
+        network_name="venvbr0",
         args={'FLAG': 'TEST123'}
     )
 
@@ -95,6 +99,7 @@ if __name__ == "__main__":
         base_image_path="/var/lib/libvirt/images/ubuntu18.04.qcow2",
         internal_ports=[22],
         published_ports=[10023],
+        network_name="venvbr0",
         args={'FLAG': 'TEST123'}
     )
 

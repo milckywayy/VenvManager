@@ -1,0 +1,12 @@
+#!/bin/bash
+
+CLUSTER=$1
+BR="venvbr${CLUSTER}"
+
+# Stop dnsmasq
+kill $(cat /tmp/dhcp-$BR/pid)
+
+# Remove bridge
+ip link set $BR down
+ip link delete $BR type bridge
+rm -rf /tmp/dhcp-$BR

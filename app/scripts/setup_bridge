@@ -1,0 +1,24 @@
+#!/bin/bash
+
+CLUSTER=$1
+BR="venvbr${CLUSTER}"
+SUBNET="10.10.10.0"
+GW="${SUBNET%.*}.1"
+
+# 1. Make bridge
+ip link add $BR type bridge
+ip addr add ${GW}/24 dev $BR
+ip link set $BR up
+
+# 2. dnsmasq: DHCP server
+mkdir -p /tmp/dhcp-$BR
+cat <<EOF > /tmp/dhcp-$BR/dnsmasq.conf
+interface=$BR
+bind-interfaces
+dhcp-range=${SUBNET%.*}.100,${SUBNET%.*}.199,12h
+dhcp-option=3,$GW
+EOF
+
+dnsmasq --conf-file=/tmp/dhcp-$BR/dnsmasq.conf --pid-file=/tmp/dhcp-$BR/pid
+
+echo "[OK] Cluster $CLUSTER is ready: $BR ($SUBNET/24)"
