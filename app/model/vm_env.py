@@ -1,4 +1,7 @@
+import uuid
+from app.utils.vm_overlay import create_overlay, remove_overlay
 from environment import Environment
+from app.config import Config
 from app.model.status import EnvStatus
 import libvirt
 
@@ -9,14 +12,22 @@ class VMEnvironment(Environment):
     def __init__(
             self, name: str,
             template_path: str,
+            base_image_path: str,
             internal_ports: list,
             published_ports: list,
             args: dict
     ):
         super().__init__(name, internal_ports, published_ports, args)
         self.template_path = template_path
+        self.base_image_path = base_image_path
+
+        Config.OVERLAY_PATH.mkdir(parents=True, exist_ok=True)
+        self.image_path = str(Config.OVERLAY_PATH / f"{name}.qcow2")
+
+        create_overlay(base_image_path, self.image_path)
 
         self.domain = None
+
 
     def _load_template(self):
         with open(self.template_path, "r") as f:
@@ -25,6 +36,8 @@ class VMEnvironment(Environment):
     def _render_xml(self):
         xml = self._load_template()
         xml = xml.replace("{{VM_NAME}}", self.name)
+        xml = xml.replace("{{DISK_IMAGE}}", self.image_path)
+        xml = xml.replace("{{VM_UUID}}", str(uuid.uuid4()))
         return xml
 
     def start(self):
@@ -63,20 +76,33 @@ class VMEnvironment(Environment):
     def destroy(self):
         self.domain.destroy()
         self.domain.undefine()
+        remove_overlay(self.image_path)
 
 
 if __name__ == "__main__":
-    vm = VMEnvironment(
+    vm1 = VMEnvironment(
         name="ctf-vm01",
         template_path="/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml",
+        base_image_path="/var/lib/libvirt/images/ubuntu18.04.qcow2",
         internal_ports=[22],
         published_ports=[10022],
         args={'FLAG': 'TEST123'}
     )
 
-    vm.start()
-    print(f"Status: {vm.status()}")
-    print(f"Access info: {vm.get_access_info()}")
+    vm2 = VMEnvironment(
+        name="ctf-vm02",
+        template_path="/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml",
+        base_image_path="/var/lib/libvirt/images/ubuntu18.04.qcow2",
+        internal_ports=[22],
+        published_ports=[10023],
+        args={'FLAG': 'TEST123'}
+    )
+
+    vm1.start()
+    vm2.start()
+    print(f"Status: {vm1.status()}")
+    print(f"Status: {vm2.status()}")
 
     input("Naciśnij Enter aby zatrzymać vm...")
-    vm.destroy()
+    vm1.destroy()
+    vm2.destroy()
