@@ -1,12 +1,34 @@
 #!/bin/bash
 
 CLUSTER=$1
+if [[ -z "$CLUSTER" || "$CLUSTER" -lt 1 ]]; then
+    echo "Usage: $0 <cluster_number>"
+    exit 1
+fi
+
+X=$(( (CLUSTER - 1) / 256 + 10 ))
+Y=$(( (CLUSTER - 1) % 256 ))
+
 BR="venvbr${CLUSTER}"
+DUMMY="dummy${CLUSTER}"
+DHCP_DIR="/tmp/dhcp-$BR"
 
-# Stop dnsmasq
-kill $(cat /tmp/dhcp-$BR/pid)
+# Stop dnsmasq if running
+if [[ -f "$DHCP_DIR/pid" ]]; then
+    kill $(cat "$DHCP_DIR/pid") 2>/dev/null
+fi
 
-# Remove bridge
-ip link set $BR down
-ip link delete $BR type bridge
-rm -rf /tmp/dhcp-$BR
+# Detach dummy from bridge (if needed) and delete
+if ip link show "$DUMMY" > /dev/null 2>&1; then
+    ip link set "$DUMMY" nomaster 2>/dev/null || true
+    ip link delete "$DUMMY" 2>/dev/null || true
+fi
+
+# Bring down and delete bridge
+ip link set $BR down 2>/dev/null
+ip link delete $BR type bridge 2>/dev/null
+
+# Remove dnsmasq config dir
+rm -rf "$DHCP_DIR"
+
+echo "[OK] Cluster $CLUSTER ($BR) removed."

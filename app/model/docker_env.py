@@ -1,4 +1,4 @@
-from app.utils.networking import create_docker_network, remove_docker_network
+from app.utils.networking import create_docker_network, remove_docker_network, get_bridge_name, get_host_ip_address
 from environment import Environment
 from app.model.status import EnvStatus
 import docker
@@ -17,12 +17,14 @@ class DockerEnvironment(Environment):
             internal_ports: list,
             published_ports: list,
             network: Network,
+            cluster_id: int,
             args: dict
     ):
         super().__init__(name, internal_ports, published_ports, args)
         self.image = image
-        self.network = network
         self.index = index
+        self.network = network
+        self.cluster_id = cluster_id
 
         self.container = None
 
@@ -47,7 +49,7 @@ class DockerEnvironment(Environment):
             print(f"Unexpected Docker error while starting container '{self.name}': {e}")
 
     def on_started(self):
-        self.network.connect(self.container.id, ipv4_address=f"10.10.10.{str(self.index + 10)}")
+        self.network.connect(self.container.id, ipv4_address=get_host_ip_address(self.cluster_id, self.index + 10))
 
     def stop(self):
         self.container.stop()
@@ -74,9 +76,11 @@ class DockerEnvironment(Environment):
 
 
 if __name__ == "__main__":
-    bridge_name = 'venvbr0'
+    cluster_id = 69
+    bridge_name = get_bridge_name(cluster_id)
     network_name = 'docker-test'
-    docker_network = create_docker_network(docker_client, network_name, bridge_name)
+
+    docker_network = create_docker_network(docker_client, network_name, bridge_name, cluster_id)
     print(docker_network)
 
     container1 = DockerEnvironment(
@@ -86,6 +90,7 @@ if __name__ == "__main__":
         internal_ports=[80],
         published_ports=[5000],
         network=docker_network,
+        cluster_id=cluster_id,
         args={"FLAG": "TEST123"}
     )
 
@@ -96,6 +101,7 @@ if __name__ == "__main__":
         internal_ports=[22],
         published_ports=[5001],
         network=docker_network,
+        cluster_id=cluster_id,
         args={"FLAG": "TEST123"}
     )
     print(container2)

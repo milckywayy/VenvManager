@@ -3,7 +3,44 @@ from docker.client import DockerClient
 from docker.models.networks import Network
 
 
-def create_docker_network(docker_client: DockerClient, network_name: str, bridge_name) -> Network:
+def get_cluster_subnet(cluster_id: int) -> str:
+    if cluster_id < 1:
+        raise ValueError("cluster_id must be an integer greater than 0")
+
+    x = (cluster_id - 1) // 256 + 10
+    y = (cluster_id - 1) % 256
+
+    return f"10.{x}.{y}.0/24"
+
+
+def get_host_ip_address(cluster_id: int, host_id: int) -> str:
+    if cluster_id < 1:
+        raise ValueError("cluster_id must be an integer greater than 0")
+    if not (0 <= host_id <= 255):
+        raise ValueError("host_id must be in range 0–255")
+
+    x = (cluster_id - 1) // 256 + 10
+    y = (cluster_id - 1) % 256
+
+    return f"10.{x}.{y}.{host_id}"
+
+
+def get_gateway_ip(cluster_id: int) -> str:
+    subnet = get_cluster_subnet(cluster_id)
+    return subnet.replace('.0/24', '.1')
+
+
+def get_bridge_name(cluster_id: int) -> str:
+    if cluster_id < 1:
+        raise ValueError("cluster_id must be an integer greater than 0")
+
+    return f'venvbr{cluster_id}'
+
+
+def create_docker_network(docker_client: DockerClient, network_name: str, bridge_name, cluster_id: int) -> Network:
+    subnet = get_cluster_subnet(cluster_id)
+    gateway = get_gateway_ip(cluster_id)
+
     try:
         return docker_client.networks.create(
             name=network_name,
@@ -14,8 +51,8 @@ def create_docker_network(docker_client: DockerClient, network_name: str, bridge
             ipam=docker.types.IPAMConfig(
                 pool_configs=[
                     docker.types.IPAMPool(
-                        subnet='10.10.10.0/24',
-                        gateway='10.10.10.1',
+                        subnet=subnet,
+                        gateway=gateway,
                     )
                 ]
             )

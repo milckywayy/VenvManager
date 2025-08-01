@@ -1,4 +1,5 @@
 import uuid
+from app.utils.networking import get_bridge_name
 from app.utils.vm_overlay import create_overlay, remove_overlay
 from environment import Environment
 from app.config import Config
@@ -83,13 +84,16 @@ class VMEnvironment(Environment):
 
 
 if __name__ == "__main__":
+    cluster_id = 100
+    network_name = get_bridge_name(cluster_id)
+
     vm1 = VMEnvironment(
         name="ctf-vm01",
         template_path="/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml",
         base_image_path="/var/lib/libvirt/images/ubuntu18.04.qcow2",
         internal_ports=[22],
         published_ports=[10022],
-        network_name="venvbr0",
+        network_name=network_name,
         args={'FLAG': 'TEST123'}
     )
 
@@ -99,7 +103,7 @@ if __name__ == "__main__":
         base_image_path="/var/lib/libvirt/images/ubuntu18.04.qcow2",
         internal_ports=[22],
         published_ports=[10023],
-        network_name="venvbr0",
+        network_name=network_name,
         args={'FLAG': 'TEST123'}
     )
 
