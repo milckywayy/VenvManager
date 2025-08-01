@@ -8,6 +8,12 @@ if [[ -z "$CLUSTER" || "$CLUSTER" -lt 1 ]]; then
     exit 1
 fi
 
+MAX_CLUSTER=62976
+if [[ "$CLUSTER" -gt "$MAX_CLUSTER" ]]; then
+    echo "Error: CLUSTER must be <= $MAX_CLUSTER to stay within 10.0.0.0/8"
+    exit 1
+fi
+
 X=$(( (CLUSTER - 1) / 256 + 10 ))
 Y=$(( (CLUSTER - 1) % 256 ))
 

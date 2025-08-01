@@ -2,6 +2,8 @@ import docker
 from docker.client import DockerClient
 from docker.models.networks import Network
 
+MAX_NETWORKS = 62976
+
 
 def get_cluster_subnet(cluster_id: int) -> str:
     if cluster_id < 1:
