@@ -1,5 +1,10 @@
+import subprocess
+import threading
+import time
 import uuid
-from app.utils.networking import get_bridge_name
+from time import sleep
+from app.utils.networking import get_bridge_name, forward_port
+import xml.etree.ElementTree as ET
 from app.utils.vm_overlay import create_overlay, remove_overlay
 from environment import Environment
 from app.config import Config
@@ -33,6 +38,7 @@ class VMEnvironment(Environment):
         self.template_path = template_path
         self.base_image_path = base_image_path
         self.network_name = network_name
+        self.forwarded_ports = []
 
         Config.OVERLAY_PATH.mkdir(parents=True, exist_ok=True)
         self.image_path = str(Config.OVERLAY_PATH / f"{name}.qcow2")
@@ -41,7 +47,6 @@ class VMEnvironment(Environment):
 
         self.domain = None
         logging.info(f"Created vm environment {self.name}")
-
 
     def _load_template(self):
         logging.debug(f"Loading template for {self.name} from {self.template_path}")
@@ -70,6 +75,47 @@ class VMEnvironment(Environment):
         xml = xml.replace("{{NETWORK_NAME}}", self.network_name)
         return xml
 
+    def _get_ip(self) -> str | None:
+        if not self.domain:
+            raise VMEnvException(f"VM domain {self.name} was not created")
+
+        try:
+            xml_desc = self.domain.XMLDesc()
+            root = ET.fromstring(xml_desc)
+
+            for interface in root.findall(".//devices/interface"):
+                source = interface.find("source")
+                if source is not None and source.attrib.get("bridge") == self.network_name:
+                    mac_elem = interface.find("mac")
+                    if mac_elem is not None:
+                        mac = mac_elem.attrib.get("address").lower()
+
+                        output = subprocess.check_output(["ip", "neigh"]).decode()
+                        for line in output.splitlines():
+                            if mac in line.lower():
+                                return line.split()[0]
+            return None
+
+        except Exception as e:
+            raise VMEnvException(f"Failed to retrieve IP address: {e}")
+
+    def _poll_until_booted(self, timeout: int = 60):
+        logging.debug(f"Waiting for VM {self.name} to finish booting...")
+
+        start = time.time()
+        while time.time() - start < timeout:
+            if self.status() != EnvStatus.BOOTING:
+                logging.debug(f"VM {self.name} has booted with IP.")
+                self.on_started()
+                return
+
+            time.sleep(2)
+
+        self.destroy()
+        logging.error(f"VM {self.name} did not finish booting within {timeout} seconds.")
+        raise VMEnvException(f"VM {self.name} did not finish booting within {timeout} seconds.")
+
+
     def start(self):
         try:
             xml = self._render_xml()
@@ -88,8 +134,13 @@ class VMEnvironment(Environment):
 
         logging.info(f"Created vm domain {self.name}")
 
+        threading.Thread(target=self._poll_until_booted, daemon=True).start()
+
     def on_started(self):
-        pass
+        logging.debug(f"VM {self.name} booted successfully")
+
+        for internal_port, published_port in zip(self.internal_ports, self.published_ports):
+            self.forwarded_ports.append(forward_port(self._get_ip(), internal_port, published_port))
 
     def stop(self):
         if not self.domain:
@@ -111,6 +162,9 @@ class VMEnvironment(Environment):
         if not self.domain:
             return EnvStatus.UNKNOWN
 
+        if self._get_ip() is None:
+            return EnvStatus.BOOTING
+
         state, _ = self.domain.state()
 
         state_mapping = {
@@ -128,12 +182,15 @@ class VMEnvironment(Environment):
         return state_mapping.get(state, EnvStatus.UNKNOWN)
 
     def get_access_info(self) -> dict:
-        return {}
+        return {'ip': self._get_ip() if self._get_ip() else None,}
 
     def destroy(self):
         if not self.domain:
             logging.warning(f"Tried to destroy domain {self.name} but domain was not created")
             return
+
+        for forwarded_port in self.forwarded_ports:
+            forwarded_port.terminate()
 
         self.domain.destroy()
         self.domain.undefine()
@@ -142,7 +199,7 @@ class VMEnvironment(Environment):
 
 
 if __name__ == "__main__":
-    cluster_id = 5
+    cluster_id = 1
     network_name = get_bridge_name(cluster_id)
 
     vm1 = VMEnvironment(
@@ -167,9 +224,14 @@ if __name__ == "__main__":
 
     vm1.start()
     vm2.start()
-    print(f"Status: {vm1.status()}")
-    print(f"Status: {vm2.status()}")
 
-    input("Naciśnij Enter aby zatrzymać vm...")
+    print('Booting')
+    while vm1.status() == EnvStatus.BOOTING or vm2.status() == EnvStatus.BOOTING:
+        sleep(1)
+
+    print(f"vm1: {vm1.get_access_info()}")
+    print(f"vm2: {vm2.get_access_info()}")
+
+    input("Press Enter to remove vm...")
     vm1.destroy()
     vm2.destroy()

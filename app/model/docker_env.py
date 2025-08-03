@@ -36,6 +36,8 @@ class DockerEnvironment(Environment):
         self.network = network
         self.cluster_id = cluster_id
 
+        self.ip = get_host_ip_address(self.cluster_id, self.index + 10)
+
         self.container = None
         logging.info(f'Created docker environment {name}')
 
@@ -73,7 +75,7 @@ class DockerEnvironment(Environment):
             logging.warning(f'Tried to stop {self.name}, but environment was not started')
             return
 
-        self.network.connect(self.container.id, ipv4_address=get_host_ip_address(self.cluster_id, self.index + 10))
+        self.network.connect(self.container.id, ipv4_address=self.ip)
         logging.debug(f'Docker {self.name} has connected to network {self.network.name} with id {self.container.id}')
 
     def stop(self):
@@ -161,7 +163,7 @@ if __name__ == "__main__":
     container2.start()
     container2.on_started()
 
-    input("Press Enter to continue remove container...")
+    input("Press Enter to remove container...")
 
     container1.destroy()
     container2.destroy()

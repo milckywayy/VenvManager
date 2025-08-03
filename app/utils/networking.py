@@ -1,6 +1,10 @@
+import shlex
 import docker
 from docker.client import DockerClient
 from docker.models.networks import Network
+from flask import current_app
+import subprocess
+import logging
 
 MAX_NETWORKS = 62976
 
@@ -78,3 +82,24 @@ def remove_docker_network(network: Network) -> bool:
     except docker.errors.APIError as e:
         print(f"Failed to remove network '{name}': {e}")
         return False
+
+
+def forward_port(vm_ip: str, vm_port: int, host_port: int, debug=False) -> subprocess.Popen:
+    try:
+        cmd = f"socat TCP-LISTEN:{host_port},fork TCP:{vm_ip}:{vm_port}"
+        logging.debug(f"Starting socat: {cmd}")
+
+        if debug:
+            proc: subprocess.Popen[bytes] = subprocess.Popen(shlex.split(cmd))
+        else:
+            proc: subprocess.Popen[bytes] = subprocess.Popen(
+                shlex.split(cmd),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+        return proc
+
+    except Exception as e:
+        logging.error(f"Failed to start socat forwarding: {e}")
+        raise RuntimeError(f"socat failed: {e}")
+
