@@ -54,7 +54,7 @@ class DockerEnvironment(Environment):
             logging.info(f'Started docker environment {self.name}')
 
         except ImageNotFound:
-            msg = f'Docker environment {self.name} not found'
+            msg = f'Docker environment {self.image} not found'
             logging.error(msg)
             raise DockerEnvException(msg)
         except ContainerError as e:
@@ -127,16 +127,17 @@ class DockerEnvironment(Environment):
 
 
 if __name__ == "__main__":
-    cluster_id = 5
+    cluster_id = 100
     bridge_name = get_bridge_name(cluster_id)
     network_name = 'docker-test'
 
     docker_network = create_docker_network(docker_client, network_name, bridge_name, cluster_id)
     print(docker_network)
+    print(docker_client.images.list())
 
     container1 = DockerEnvironment(
         name="test1",
-        image="test",
+        image="www",
         index=0,
         internal_ports=[80],
         published_ports=[5000],
@@ -147,7 +148,7 @@ if __name__ == "__main__":
 
     container2 = DockerEnvironment(
         name="test2",
-        image="ubuntu-ssh",
+        image="ssh",
         index=1,
         internal_ports=[22],
         published_ports=[5001],

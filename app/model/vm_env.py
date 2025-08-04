@@ -85,7 +85,7 @@ class VMEnvironment(Environment):
 
             for interface in root.findall(".//devices/interface"):
                 source = interface.find("source")
-                if source is not None and source.attrib.get("bridge") == self.network_name:
+                if source is not None and source.attrib.get("bridge") == 'virbr0':
                     mac_elem = interface.find("mac")
                     if mac_elem is not None:
                         mac = mac_elem.attrib.get("address").lower()
@@ -244,7 +244,7 @@ def test_windows():
     vm1 = VMEnvironment(
         name="windows1",
         template_path="/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml",
-        base_image_path="/var/lib/libvirt/images/win7.qcow2",
+        base_image_path="/var/lib/libvirt/images/win7pro.qcow2",
         internal_ports=[3389],
         published_ports=[2137],
         network_name=network_name,
