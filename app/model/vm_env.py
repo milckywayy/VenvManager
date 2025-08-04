@@ -99,7 +99,7 @@ class VMEnvironment(Environment):
         except Exception as e:
             raise VMEnvException(f"Failed to retrieve IP address: {e}")
 
-    def _poll_until_booted(self, timeout: int = 60):
+    def _poll_until_booted(self, timeout: int = 120):
         logging.debug(f"Waiting for VM {self.name} to finish booting...")
 
         start = time.time()
@@ -198,7 +198,7 @@ class VMEnvironment(Environment):
         logging.info(f"Removed vm environment {self.name}")
 
 
-if __name__ == "__main__":
+def test_ubuntu():
     cluster_id = 1
     network_name = get_bridge_name(cluster_id)
 
@@ -235,3 +235,33 @@ if __name__ == "__main__":
     input("Press Enter to remove vm...")
     vm1.destroy()
     vm2.destroy()
+
+
+def test_windows():
+    cluster_id = 100
+    network_name = get_bridge_name(cluster_id)
+
+    vm1 = VMEnvironment(
+        name="windows1",
+        template_path="/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml",
+        base_image_path="/var/lib/libvirt/images/win7.qcow2",
+        internal_ports=[3389],
+        published_ports=[2137],
+        network_name=network_name,
+        args={'FLAG': 'TEST123'}
+    )
+
+    vm1.start()
+
+    print('Booting')
+    while vm1.status() == EnvStatus.BOOTING:
+        sleep(1)
+
+    print(f"vm1: {vm1.get_access_info()}")
+
+    input("Press Enter to remove vm...")
+    vm1.destroy()
+
+
+if __name__ == "__main__":
+    test_windows()
