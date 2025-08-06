@@ -1,18 +1,20 @@
+import os
 import subprocess
 import threading
 import time
 import uuid
 from time import sleep
+
+from app import load_env
 from app.utils.networking import get_bridge_name, forward_port
 import xml.etree.ElementTree as ET
 from app.utils.vm_overlay import create_overlay, remove_overlay
 from environment import Environment
-from app.config import Config
 from app.model.status import EnvStatus
 import libvirt
 import logging
 
-libvirt_client = libvirt.open("qemu:///system")
+libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
 
 
 class VMEnvException(Exception):
@@ -28,23 +30,23 @@ class VMEnvironment(Environment):
     def __init__(
         self,
         name: str,
-        template_path: str,
-        base_image_path: str,
+        template_name: str,
+        base_image_name: str,
         internal_ports: list,
         published_ports: list,
         network_name: str,
         args: dict,
     ):
         super().__init__(name, internal_ports, published_ports, args)
-        self.template_path = template_path
-        self.base_image_path = base_image_path
+        self.template_path = os.path.join(os.getenv("VM_TEMPLATES_PATH"), template_name)
+        self.base_image_path = os.path.join(
+            os.getenv("VM_BASE_IMAGES_PATH"), base_image_name
+        )
         self.network_name = network_name
         self.forwarded_ports = []
 
-        Config.OVERLAY_PATH.mkdir(parents=True, exist_ok=True)
-        self.image_path = str(Config.OVERLAY_PATH / f"{name}.qcow2")
-
-        create_overlay(base_image_path, self.image_path)
+        self.image_path = f"{os.getenv('VM_OVERLAYS_PATH')}/{name}.qcow2"
+        create_overlay(self.base_image_path, self.image_path)
 
         self.domain = None
         logging.info(f"Created vm environment {self.name}")
@@ -90,7 +92,9 @@ class VMEnvironment(Environment):
 
             for interface in root.findall(".//devices/interface"):
                 source = interface.find("source")
-                if source is not None and source.attrib.get("bridge") == "virbr0":
+                if source is not None and source.attrib.get("bridge") == os.getenv(
+                    "VM_DEFAULT_BRIDGE"
+                ):
                     mac_elem = interface.find("mac")
                     if mac_elem is not None:
                         mac = mac_elem.attrib.get("address").lower()
@@ -104,8 +108,11 @@ class VMEnvironment(Environment):
         except Exception as e:
             raise VMEnvException(f"Failed to retrieve IP address: {e}")
 
-    def _poll_until_booted(self, timeout: int = 120):
+    def _poll_until_booted(self):
         logging.debug(f"Waiting for VM {self.name} to finish booting...")
+
+        timeout = int(os.getenv("VM_BOOT_TIMEOUT"))
+        interval = int(os.getenv("VM_BOOT_POLL_INTERVAL"))
 
         start = time.time()
         while time.time() - start < timeout:
@@ -114,7 +121,7 @@ class VMEnvironment(Environment):
                 self.on_started()
                 return
 
-            time.sleep(2)
+            time.sleep(interval)
 
         self.destroy()
         logging.error(
@@ -224,8 +231,8 @@ def test_ubuntu():
 
     vm1 = VMEnvironment(
         name="ctf-vm01",
-        template_path="/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml",
-        base_image_path="/var/lib/libvirt/images/ubuntu18.04.qcow2",
+        template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml",
+        base_image_name="/var/lib/libvirt/images/ubuntu18.04.qcow2",
         internal_ports=[22],
         published_ports=[10022],
         network_name=network_name,
@@ -234,8 +241,8 @@ def test_ubuntu():
 
     vm2 = VMEnvironment(
         name="ctf-vm02",
-        template_path="/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml",
-        base_image_path="/var/lib/libvirt/images/ubuntu18.04.qcow2",
+        template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml",
+        base_image_name="/var/lib/libvirt/images/ubuntu18.04.qcow2",
         internal_ports=[22],
         published_ports=[10023],
         network_name=network_name,
@@ -263,8 +270,8 @@ def test_windows():
 
     vm1 = VMEnvironment(
         name="windows1",
-        template_path="/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml",
-        base_image_path="/var/lib/libvirt/images/win7pro.qcow2",
+        template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml",
+        base_image_name="/var/lib/libvirt/images/win7pro.qcow2",
         internal_ports=[3389],
         published_ports=[2137],
         network_name=network_name,
@@ -284,4 +291,6 @@ def test_windows():
 
 
 if __name__ == "__main__":
+    load_env("../../")
+
     test_windows()

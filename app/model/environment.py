@@ -1,6 +1,6 @@
+import os
 from abc import ABC, abstractmethod
 from datetime import datetime
-from flask import current_app
 
 
 class Environment(ABC):
@@ -52,7 +52,7 @@ class Environment(ABC):
     def get_time_left(self):
         now = datetime.now()
         elapsed = (now - self.creation_time).total_seconds()
-        remaining = current_app.config.get("ENV_TTL") - elapsed
+        remaining = int(os.getenv("ENV_TTL")) - elapsed
         return max(0, int(remaining))
 
     def is_expired(self):

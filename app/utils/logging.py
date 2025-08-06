@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 
 
@@ -18,7 +19,7 @@ def setup_logging(debug: bool = True):
         console_handler.setFormatter(logging.Formatter(log_format, date_format))
         logger.addHandler(console_handler)
     else:
-        file_handler = logging.FileHandler("app.log")
+        file_handler = logging.FileHandler(os.getenv("LOG_FILE_PATH"))
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(logging.Formatter(log_format, date_format))
         logger.addHandler(file_handler)

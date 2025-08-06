@@ -5,14 +5,16 @@ from docker.models.networks import Network
 import subprocess
 import logging
 
-MAX_NETWORKS = 62976
+from app.config import Config
+
+MAX_NETWORKS = Config.MAX_NETWORKS
 
 
 def get_cluster_subnet(cluster_id: int) -> str:
     if cluster_id < 1:
         raise ValueError("cluster_id must be an integer greater than 0")
 
-    x = (cluster_id - 1) // 256 + 10
+    x = (cluster_id - 1) // 256 + Config.NETWORK_OFFSET
     y = (cluster_id - 1) % 256
 
     return f"10.{x}.{y}.0/24"
@@ -63,7 +65,7 @@ def create_docker_network(
             ),
         )
     except docker.errors.APIError as e:
-        print(f"Network creation failed (maybe it exists?): {e}")
+        logging.exception(f"Network creation failed (maybe it exists?): {e}")
         try:
             return docker_client.networks.get(network_name)
         except docker.errors.NotFound:

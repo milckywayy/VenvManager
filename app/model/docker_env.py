@@ -10,6 +10,7 @@ import docker
 from docker.errors import ImageNotFound, APIError, DockerException, ContainerError
 from docker.models.networks import Network
 import logging
+from app.config import Config
 
 docker_client = docker.from_env()
 
@@ -41,7 +42,9 @@ class DockerEnvironment(Environment):
         self.network = network
         self.cluster_id = cluster_id
 
-        self.ip = get_host_ip_address(self.cluster_id, self.index + 10)
+        self.ip = get_host_ip_address(
+            self.cluster_id, self.index + Config.DOCKER_IP_OFFSET
+        )
 
         self.container = None
         logging.info(f"Created docker environment {name}")

@@ -1,23 +1,12 @@
+from dotenv import load_dotenv
 import os
-from pathlib import Path
+
+load_dotenv(dotenv_path=".env")
+env_file = f".env.{os.getenv('FLASK_ENV', 'development')}"
+load_dotenv(dotenv_path=env_file, override=True)
 
 
 class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY", os.urandom(24))
-    OVERLAY_PATH = Path("/var/lib/libvirt/images/")
-
-    DEBUG = False
-    ENV_TTL = None
-
-
-class DevelopmentConfig(Config):
-    DEBUG = True
-    ENV_TTL = 3600
-
-
-class ProductionConfig(Config):
-    DEBUG = False
-    ENV_TTL = 1800
-
-
-config_map = {"development": DevelopmentConfig, "production": ProductionConfig}
+    MAX_NETWORKS = 62976
+    NETWORK_OFFSET = 10
+    DOCKER_IP_OFFSET = 10

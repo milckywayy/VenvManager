@@ -1,18 +1,24 @@
+import logging
 from flask import Flask
 from app.routes.main import main_bp
-from .config import config_map
-from dotenv import load_dotenv
 from app.utils.logging import setup_logging
+from app.load_env import load_env
 import os
 
 
 def create_app():
-    load_dotenv()
+    try:
+        load_env()
+
+    except EnvironmentError as e:
+        logging.error(e)
+        exit(1)
+
+    print(os.getenv("SECRET_KEY"))
 
     app = Flask(__name__)
-    env = os.getenv("FLASK_ENV", "development")
-    app.config.from_object(config_map[env])
-    setup_logging(app.config["DEBUG"])
+    app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
+    setup_logging(bool(int(os.environ.get("DEBUG"))))
 
     app.register_blueprint(main_bp)
 
