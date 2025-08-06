@@ -4,7 +4,9 @@ from flask import current_app
 
 
 class Environment(ABC):
-    def __init__(self, name: str, internal_ports: list, published_ports: list, args: dict):
+    def __init__(
+        self, name: str, internal_ports: list, published_ports: list, args: dict
+    ):
         # TODO add network parsing
         self.name = name
 
@@ -50,7 +52,7 @@ class Environment(ABC):
     def get_time_left(self):
         now = datetime.now()
         elapsed = (now - self.creation_time).total_seconds()
-        remaining = current_app.config.get('ENV_TTL') - elapsed
+        remaining = current_app.config.get("ENV_TTL") - elapsed
         return max(0, int(remaining))
 
     def is_expired(self):

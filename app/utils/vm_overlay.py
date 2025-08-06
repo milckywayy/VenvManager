@@ -4,9 +4,20 @@ import logging
 
 
 def create_overlay(base_image_path, image_path):
-    subprocess.run([
-        "qemu-img", "create", "-f", "qcow2", "-F", "qcow2", "-b", base_image_path, image_path
-    ], check=True)
+    subprocess.run(
+        [
+            "qemu-img",
+            "create",
+            "-f",
+            "qcow2",
+            "-F",
+            "qcow2",
+            "-b",
+            base_image_path,
+            image_path,
+        ],
+        check=True,
+    )
     logging.debug(f"Created overlay: {image_path}")
 
 

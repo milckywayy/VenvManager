@@ -1,4 +1,9 @@
-from app.utils.networking import create_docker_network, remove_docker_network, get_bridge_name, get_host_ip_address
+from app.utils.networking import (
+    create_docker_network,
+    remove_docker_network,
+    get_bridge_name,
+    get_host_ip_address,
+)
 from environment import Environment
 from app.model.status import EnvStatus
 import docker
@@ -20,15 +25,15 @@ class DockerEnvException(Exception):
 
 class DockerEnvironment(Environment):
     def __init__(
-            self,
-            name: str,
-            image: str,
-            index: int,
-            internal_ports: list,
-            published_ports: list,
-            network: Network,
-            cluster_id: int,
-            args: dict
+        self,
+        name: str,
+        image: str,
+        index: int,
+        internal_ports: list,
+        published_ports: list,
+        network: Network,
+        cluster_id: int,
+        args: dict,
     ):
         super().__init__(name, internal_ports, published_ports, args)
         self.image = image
@@ -39,99 +44,121 @@ class DockerEnvironment(Environment):
         self.ip = get_host_ip_address(self.cluster_id, self.index + 10)
 
         self.container = None
-        logging.info(f'Created docker environment {name}')
+        logging.info(f"Created docker environment {name}")
 
     def start(self):
         try:
             self.container = docker_client.containers.run(
                 self.image,
                 detach=True,
-                ports={f'{internal}/tcp': published for internal, published in
-                       zip(self.internal_ports, self.published_ports)},
+                ports={
+                    f"{internal}/tcp": published
+                    for internal, published in zip(
+                        self.internal_ports, self.published_ports
+                    )
+                },
                 name=self.name,
                 environment={**self.args},
             )
-            logging.info(f'Started docker environment {self.name}')
+            logging.info(f"Started docker environment {self.name}")
 
         except ImageNotFound:
-            msg = f'Docker environment {self.image} not found'
+            msg = f"Docker environment {self.image} not found"
             logging.error(msg)
             raise DockerEnvException(msg)
         except ContainerError as e:
-            msg = f'Docker environment {self.name} failed: {e}'
+            msg = f"Docker environment {self.name} failed: {e}"
             logging.error(msg)
             raise DockerEnvException(msg)
         except APIError as e:
-            msg = f'Docker environment {self.name} API error: {e}'
+            msg = f"Docker environment {self.name} API error: {e}"
             logging.error(msg)
             raise DockerEnvException(msg)
         except DockerException as e:
-            msg = f'Docker environment {self.name} error: {e}'
+            msg = f"Docker environment {self.name} error: {e}"
             logging.error(msg)
             raise DockerEnvException(msg)
 
     def on_started(self):
         if self.container is None:
-            logging.warning(f'Tried to stop {self.name}, but environment was not started')
+            logging.warning(
+                f"Tried to stop {self.name}, but environment was not started"
+            )
             return
 
         self.network.connect(self.container.id, ipv4_address=self.ip)
-        logging.debug(f'Docker {self.name} has connected to network {self.network.name} with id {self.container.id}')
+        logging.debug(
+            f"Docker {self.name} has connected to network {self.network.name} with id {self.container.id}"
+        )
 
     def stop(self):
         if self.container is None:
-            logging.warning(f'Tried to stop {self.name}, but environment was not started')
-            raise DockerEnvException(f'Docker {self.name} has not started yet')
+            logging.warning(
+                f"Tried to stop {self.name}, but environment was not started"
+            )
+            raise DockerEnvException(f"Docker {self.name} has not started yet")
 
         self.container.stop()
-        logging.info(f'Stopped docker environment {self.name}')
+        logging.info(f"Stopped docker environment {self.name}")
 
     def restart(self):
         if self.container is None:
-            logging.warning(f'Tried to restart {self.name}, but environment was not started')
-            raise DockerEnvException(f'Docker {self.name} has not started yet')
+            logging.warning(
+                f"Tried to restart {self.name}, but environment was not started"
+            )
+            raise DockerEnvException(f"Docker {self.name} has not started yet")
 
         try:
             self.container.restart()
-            logging.info(f'Restarted docker environment {self.name}')
+            logging.info(f"Restarted docker environment {self.name}")
 
         except ImageNotFound as e:
-            logging.error(f'Docker environment {self.name} not found: {e}')
-            raise DockerEnvException(f'Docker environment {self.name} not found: {e}')
+            logging.error(f"Docker environment {self.name} not found: {e}")
+            raise DockerEnvException(f"Docker environment {self.name} not found: {e}")
 
     def status(self) -> EnvStatus:
         if self.container is None:
             return EnvStatus.UNKNOWN
 
         docker_status = self.container.status
-        logging.debug(f'Checked docker {self.name} status: {docker_status}')
-        return EnvStatus(docker_status) if docker_status in EnvStatus._value2member_map_ else EnvStatus.UNKNOWN
+        logging.debug(f"Checked docker {self.name} status: {docker_status}")
+        return (
+            EnvStatus(docker_status)
+            if docker_status in EnvStatus._value2member_map_
+            else EnvStatus.UNKNOWN
+        )
 
     def get_access_info(self) -> dict:
         if self.container is None:
-            logging.warning(f'Tried to stop {self.name}, but environment was not started')
-            raise DockerEnvException(f'Docker environment {self.name} was not started')
+            logging.warning(
+                f"Tried to stop {self.name}, but environment was not started"
+            )
+            raise DockerEnvException(f"Docker environment {self.name} was not started")
 
-        logging.debug(f'Getting docker access info {self.name}')
+        logging.debug(f"Getting docker access info {self.name}")
         return {}
 
     def destroy(self):
         if self.container is None:
-            logging.warning(f'Tried to remove {self.name}, but environment was not started')
+            logging.warning(
+                f"Tried to remove {self.name}, but environment was not started"
+            )
             return
 
         self.container.stop()
         self.container.remove()
 
-        logging.info(f'Removed docker environment {self.name}')
+        logging.info(f"Removed docker environment {self.name}")
 
 
 if __name__ == "__main__":
     cluster_id = 100
     bridge_name = get_bridge_name(cluster_id)
-    network_name = 'docker-test'
+    network_name = "docker-test"
 
-    docker_network = create_docker_network(docker_client, network_name, bridge_name, cluster_id)
+    docker_network = create_docker_network(
+        docker_client, network_name, bridge_name, cluster_id
+    )
     print(docker_network)
     print(docker_client.images.list())
 
@@ -143,7 +170,7 @@ if __name__ == "__main__":
         published_ports=[5000],
         network=docker_network,
         cluster_id=cluster_id,
-        args={"FLAG": "TEST123"}
+        args={"FLAG": "TEST123"},
     )
 
     container2 = DockerEnvironment(
@@ -154,7 +181,7 @@ if __name__ == "__main__":
         published_ports=[5001],
         network=docker_network,
         cluster_id=cluster_id,
-        args={"FLAG": "TEST123"}
+        args={"FLAG": "TEST123"},
     )
     print(container2)
 

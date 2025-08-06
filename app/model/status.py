@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class EnvStatus(Enum):
     CREATED = "created"
     BOOTING = "booting"

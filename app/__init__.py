@@ -10,9 +10,9 @@ def create_app():
     load_dotenv()
 
     app = Flask(__name__)
-    env = os.getenv('FLASK_ENV', 'development')
+    env = os.getenv("FLASK_ENV", "development")
     app.config.from_object(config_map[env])
-    setup_logging(app.config['DEBUG'])
+    setup_logging(app.config["DEBUG"])
 
     app.register_blueprint(main_bp)
 

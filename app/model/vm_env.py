@@ -12,7 +12,7 @@ from app.model.status import EnvStatus
 import libvirt
 import logging
 
-libvirt_client = libvirt.open('qemu:///system')
+libvirt_client = libvirt.open("qemu:///system")
 
 
 class VMEnvException(Exception):
@@ -26,13 +26,14 @@ class VMEnvException(Exception):
 
 class VMEnvironment(Environment):
     def __init__(
-            self, name: str,
-            template_path: str,
-            base_image_path: str,
-            internal_ports: list,
-            published_ports: list,
-            network_name: str,
-            args: dict
+        self,
+        name: str,
+        template_path: str,
+        base_image_path: str,
+        internal_ports: list,
+        published_ports: list,
+        network_name: str,
+        args: dict,
     ):
         super().__init__(name, internal_ports, published_ports, args)
         self.template_path = template_path
@@ -58,16 +59,20 @@ class VMEnvironment(Environment):
             "{{VM_NAME}}",
             "{{DISK_IMAGE}}",
             "{{VM_UUID}}",
-            "{{NETWORK_NAME}}"
+            "{{NETWORK_NAME}}",
         ]
 
         xml = self._load_template()
 
         missing = [ph for ph in required_placeholders if ph not in xml]
         if missing:
-            logging.error(f"Missing placeholders in XML template for {self.name}: {missing}")
+            logging.error(
+                f"Missing placeholders in XML template for {self.name}: {missing}"
+            )
             raise VMEnvException(f"XML template is missing placeholders: {missing}")
-        logging.debug(f"All required placeholders are present in the XML template for {self.name}")
+        logging.debug(
+            f"All required placeholders are present in the XML template for {self.name}"
+        )
 
         xml = xml.replace("{{VM_NAME}}", self.name)
         xml = xml.replace("{{DISK_IMAGE}}", self.image_path)
@@ -85,7 +90,7 @@ class VMEnvironment(Environment):
 
             for interface in root.findall(".//devices/interface"):
                 source = interface.find("source")
-                if source is not None and source.attrib.get("bridge") == 'virbr0':
+                if source is not None and source.attrib.get("bridge") == "virbr0":
                     mac_elem = interface.find("mac")
                     if mac_elem is not None:
                         mac = mac_elem.attrib.get("address").lower()
@@ -112,9 +117,12 @@ class VMEnvironment(Environment):
             time.sleep(2)
 
         self.destroy()
-        logging.error(f"VM {self.name} did not finish booting within {timeout} seconds.")
-        raise VMEnvException(f"VM {self.name} did not finish booting within {timeout} seconds.")
-
+        logging.error(
+            f"VM {self.name} did not finish booting within {timeout} seconds."
+        )
+        raise VMEnvException(
+            f"VM {self.name} did not finish booting within {timeout} seconds."
+        )
 
     def start(self):
         try:
@@ -139,12 +147,18 @@ class VMEnvironment(Environment):
     def on_started(self):
         logging.debug(f"VM {self.name} booted successfully")
 
-        for internal_port, published_port in zip(self.internal_ports, self.published_ports):
-            self.forwarded_ports.append(forward_port(self._get_ip(), internal_port, published_port))
+        for internal_port, published_port in zip(
+            self.internal_ports, self.published_ports
+        ):
+            self.forwarded_ports.append(
+                forward_port(self._get_ip(), internal_port, published_port)
+            )
 
     def stop(self):
         if not self.domain:
-            logging.error(f"Tried to stop domain {self.name} but domain was not created")
+            logging.error(
+                f"Tried to stop domain {self.name} but domain was not created"
+            )
             raise VMEnvException(f"VM domain {self.name} was not created")
 
         self.domain.shutdown()
@@ -152,7 +166,9 @@ class VMEnvironment(Environment):
 
     def restart(self):
         if not self.domain:
-            logging.error(f"Tried to restart domain {self.name} but domain was not created")
+            logging.error(
+                f"Tried to restart domain {self.name} but domain was not created"
+            )
             raise VMEnvException(f"VM domain {self.name} was not created")
 
         self.domain.reboot()
@@ -182,11 +198,15 @@ class VMEnvironment(Environment):
         return state_mapping.get(state, EnvStatus.UNKNOWN)
 
     def get_access_info(self) -> dict:
-        return {'ip': self._get_ip() if self._get_ip() else None,}
+        return {
+            "ip": self._get_ip() if self._get_ip() else None,
+        }
 
     def destroy(self):
         if not self.domain:
-            logging.warning(f"Tried to destroy domain {self.name} but domain was not created")
+            logging.warning(
+                f"Tried to destroy domain {self.name} but domain was not created"
+            )
             return
 
         for forwarded_port in self.forwarded_ports:
@@ -209,7 +229,7 @@ def test_ubuntu():
         internal_ports=[22],
         published_ports=[10022],
         network_name=network_name,
-        args={'FLAG': 'TEST123'}
+        args={"FLAG": "TEST123"},
     )
 
     vm2 = VMEnvironment(
@@ -219,13 +239,13 @@ def test_ubuntu():
         internal_ports=[22],
         published_ports=[10023],
         network_name=network_name,
-        args={'FLAG': 'TEST123'}
+        args={"FLAG": "TEST123"},
     )
 
     vm1.start()
     vm2.start()
 
-    print('Booting')
+    print("Booting")
     while vm1.status() == EnvStatus.BOOTING or vm2.status() == EnvStatus.BOOTING:
         sleep(1)
 
@@ -248,12 +268,12 @@ def test_windows():
         internal_ports=[3389],
         published_ports=[2137],
         network_name=network_name,
-        args={'FLAG': 'TEST123'}
+        args={"FLAG": "TEST123"},
     )
 
     vm1.start()
 
-    print('Booting')
+    print("Booting")
     while vm1.status() == EnvStatus.BOOTING:
         sleep(1)
 
