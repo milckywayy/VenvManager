@@ -1,7 +1,7 @@
 #!/bin/bash
 
 CLUSTER=$1
-if [[ -z "$CLUSTER" || "$CLUSTER" -lt 1 ]]; then
+if [[ -z "$CLUSTER" || "$CLUSTER" -lt 0 ]]; then
     echo "Usage: $0 <cluster_number>"
     exit 1
 fi
@@ -12,8 +12,8 @@ if [[ "$CLUSTER" -gt "$MAX_CLUSTER" ]]; then
     exit 1
 fi
 
-X=$(( (CLUSTER - 1) / 256 + 10 ))
-Y=$(( (CLUSTER - 1) % 256 ))
+X=$(( CLUSTER / 256 + 10 ))
+Y=$(( CLUSTER % 256 ))
 
 BR="venvbr${CLUSTER}"
 DUMMY="dummy${CLUSTER}"

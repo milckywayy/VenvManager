@@ -11,23 +11,23 @@ MAX_NETWORKS = Config.MAX_NETWORKS
 
 
 def get_cluster_subnet(cluster_id: int) -> str:
-    if cluster_id < 1:
-        raise ValueError("cluster_id must be an integer greater than 0")
+    if cluster_id < 0:
+        raise ValueError("cluster_id must be an integer >= 0")
 
-    x = (cluster_id - 1) // 256 + Config.NETWORK_OFFSET
-    y = (cluster_id - 1) % 256
+    x = cluster_id // 256 + Config.NETWORK_OFFSET
+    y = cluster_id % 256
 
     return f"10.{x}.{y}.0/24"
 
 
 def get_host_ip_address(cluster_id: int, host_id: int) -> str:
-    if cluster_id < 1:
-        raise ValueError("cluster_id must be an integer greater than 0")
+    if cluster_id < 0:
+        raise ValueError("cluster_id must be an integer >= 0")
     if not (0 <= host_id <= 255):
         raise ValueError("host_id must be in range 0–255")
 
-    x = (cluster_id - 1) // 256 + 10
-    y = (cluster_id - 1) % 256
+    x = cluster_id // 256 + Config.NETWORK_OFFSET
+    y = cluster_id % 256
 
     return f"10.{x}.{y}.{host_id}"
 
@@ -38,8 +38,8 @@ def get_gateway_ip(cluster_id: int) -> str:
 
 
 def get_bridge_name(cluster_id: int) -> str:
-    if cluster_id < 1:
-        raise ValueError("cluster_id must be an integer greater than 0")
+    if cluster_id < 0:
+        raise ValueError("cluster_id must be an integer >= 0")
 
     return f"venvbr{cluster_id}"
 
