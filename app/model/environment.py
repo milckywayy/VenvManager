@@ -2,6 +2,8 @@ import os
 from abc import ABC, abstractmethod
 from datetime import datetime
 
+from app.model.status import EnvStatus
+
 
 class Environment(ABC):
     def __init__(
@@ -24,10 +26,6 @@ class Environment(ABC):
         pass
 
     @abstractmethod
-    def on_started(self):
-        pass
-
-    @abstractmethod
     def stop(self):
         pass
 
@@ -38,7 +36,7 @@ class Environment(ABC):
         pass
 
     @abstractmethod
-    def status(self):
+    def status(self) -> EnvStatus:
         pass
 
     @abstractmethod

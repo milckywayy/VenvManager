@@ -51,6 +51,16 @@ class VMEnvironment(Environment):
         self.domain = None
         logging.info(f"Created vm environment {self.name}")
 
+    def _on_started(self):
+        logging.debug(f"VM {self.name} booted successfully")
+
+        for internal_port, published_port in zip(
+            self.internal_ports, self.published_ports
+        ):
+            self.forwarded_ports.append(
+                forward_port(self._get_ip(), internal_port, published_port)
+            )
+
     def _load_template(self):
         logging.debug(f"Loading template for {self.name} from {self.template_path}")
         with open(self.template_path, "r") as f:
@@ -112,13 +122,13 @@ class VMEnvironment(Environment):
         logging.debug(f"Waiting for VM {self.name} to finish booting...")
 
         timeout = int(os.getenv("VM_BOOT_TIMEOUT"))
-        interval = int(os.getenv("VM_BOOT_POLL_INTERVAL"))
+        interval = int(os.getenv("ENV_BOOT_POLL_INTERVAL"))
 
         start = time.time()
         while time.time() - start < timeout:
             if self.status() != EnvStatus.BOOTING:
                 logging.debug(f"VM {self.name} has booted with IP.")
-                self.on_started()
+                self._on_started()
                 return
 
             time.sleep(interval)
@@ -150,16 +160,6 @@ class VMEnvironment(Environment):
         logging.info(f"Created vm domain {self.name}")
 
         threading.Thread(target=self._poll_until_booted, daemon=True).start()
-
-    def on_started(self):
-        logging.debug(f"VM {self.name} booted successfully")
-
-        for internal_port, published_port in zip(
-            self.internal_ports, self.published_ports
-        ):
-            self.forwarded_ports.append(
-                forward_port(self._get_ip(), internal_port, published_port)
-            )
 
     def stop(self):
         if not self.domain:

@@ -49,6 +49,18 @@ class DockerEnvironment(Environment):
         self.container = None
         logging.info(f"Created docker environment {name}")
 
+    def _on_started(self):
+        if self.container is None:
+            logging.warning(
+                f"Tried to stop {self.name}, but environment was not started"
+            )
+            return
+
+        self.network.connect(self.container.id, ipv4_address=self.ip)
+        logging.debug(
+            f"Docker {self.name} has connected to network {self.network.name} with id {self.container.id}"
+        )
+
     def start(self):
         try:
             self.container = docker_client.containers.run(
@@ -64,6 +76,8 @@ class DockerEnvironment(Environment):
                 environment={**self.args},
             )
             logging.info(f"Started docker environment {self.name}")
+
+            self._on_started()
 
         except ImageNotFound:
             msg = f"Docker environment {self.image} not found"
@@ -81,18 +95,6 @@ class DockerEnvironment(Environment):
             msg = f"Docker environment {self.name} error: {e}"
             logging.error(msg)
             raise DockerEnvException(msg)
-
-    def on_started(self):
-        if self.container is None:
-            logging.warning(
-                f"Tried to stop {self.name}, but environment was not started"
-            )
-            return
-
-        self.network.connect(self.container.id, ipv4_address=self.ip)
-        logging.debug(
-            f"Docker {self.name} has connected to network {self.network.name} with id {self.container.id}"
-        )
 
     def stop(self):
         if self.container is None:
@@ -123,7 +125,7 @@ class DockerEnvironment(Environment):
         if self.container is None:
             return EnvStatus.UNKNOWN
 
-        docker_status = self.container.status
+        docker_status = docker_client.containers.get(self.container.id).status
         logging.debug(f"Checked docker {self.name} status: {docker_status}")
         return (
             EnvStatus(docker_status)
@@ -189,10 +191,10 @@ if __name__ == "__main__":
     print(container2)
 
     container1.start()
-    container1.on_started()
+    # container1.on_started()
 
     container2.start()
-    container2.on_started()
+    # container2.on_started()
 
     input("Press Enter to remove container...")
 
