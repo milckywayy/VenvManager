@@ -162,16 +162,6 @@ class VMEnvironment(Environment):
 
         threading.Thread(target=self._poll_until_booted, daemon=True).start()
 
-    def stop(self):
-        if not self.domain:
-            logging.error(
-                f"Tried to stop domain {self.name} but domain was not created"
-            )
-            raise VMEnvException(f"VM domain {self.name} was not created")
-
-        self.domain.shutdown()
-        logging.info(f"Stopped vm domain {self.name}")
-
     def restart(self):
         if not self.domain:
             logging.error(

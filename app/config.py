@@ -7,6 +7,4 @@ load_dotenv(dotenv_path=env_file, override=True)
 
 
 class Config:
-    MAX_NETWORKS = 62976
-    NETWORK_OFFSET = 10
-    DOCKER_IP_OFFSET = 10
+    MAX_NETWORKS = 65536

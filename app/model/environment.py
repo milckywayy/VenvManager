@@ -1,6 +1,4 @@
-import os
 from abc import ABC, abstractmethod
-from datetime import datetime
 
 from app.model.status import EnvStatus
 
@@ -19,17 +17,9 @@ class Environment(ABC):
         self.published_ports = published_ports
         self.args = args
 
-        self.creation_time = datetime.now()
-
     @abstractmethod
     def start(self):
         pass
-
-    @abstractmethod
-    def stop(self):
-        pass
-
-    # TODO Add resume method
 
     @abstractmethod
     def restart(self):
@@ -46,12 +36,3 @@ class Environment(ABC):
     @abstractmethod
     def destroy(self):
         pass
-
-    def get_time_left(self):
-        now = datetime.now()
-        elapsed = (now - self.creation_time).total_seconds()
-        remaining = int(os.getenv("ENV_TTL")) - elapsed
-        return max(0, int(remaining))
-
-    def is_expired(self):
-        return self.get_time_left() <= 0

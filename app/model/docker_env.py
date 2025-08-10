@@ -3,14 +3,12 @@ from docker.client import DockerClient
 from app.utils.networking import (
     create_docker_network,
     remove_docker_network,
-    get_host_ip_address,
 )
 from environment import Environment
 from app.model.status import EnvStatus
 from docker.errors import ImageNotFound, APIError, DockerException, ContainerError
 from docker.models.networks import Network
 import logging
-from app.config import Config
 
 
 class DockerEnvException(Exception):
@@ -28,7 +26,6 @@ class DockerEnvironment(Environment):
         docker_client: DockerClient,
         name: str,
         image: str,
-        index: int,
         internal_ports: list,
         published_ports: list,
         docker_network: Network,
@@ -38,13 +35,8 @@ class DockerEnvironment(Environment):
         super().__init__(name, internal_ports, published_ports, args)
         self.docker_client = docker_client
         self.image = image
-        self.index = index
         self.docker_network = docker_network
         self.cluster_id = cluster_id
-
-        self.ip = get_host_ip_address(
-            self.cluster_id, self.index + Config.DOCKER_IP_OFFSET
-        )
 
         self.container = None
         logging.info(f"Created docker environment {name}")
@@ -87,16 +79,6 @@ class DockerEnvironment(Environment):
             msg = f"Docker environment {self.name} error: {e}"
             logging.error(msg)
             raise DockerEnvException(msg)
-
-    def stop(self):
-        if self.container is None:
-            logging.warning(
-                f"Tried to stop {self.name}, but environment was not started"
-            )
-            raise DockerEnvException(f"Docker {self.name} has not started yet")
-
-        self.container.stop()
-        logging.info(f"Stopped docker environment {self.name}")
 
     def restart(self):
         if self.container is None:
@@ -170,7 +152,6 @@ if __name__ == "__main__":
         docker_client,
         name="test1",
         image="www",
-        index=0,
         internal_ports=[80, 22],
         published_ports=[5000, 5002],
         docker_network=docker_network,
@@ -182,7 +163,6 @@ if __name__ == "__main__":
         docker_client,
         name="test2",
         image="ssh",
-        index=1,
         internal_ports=[22],
         published_ports=[5001],
         docker_network=docker_network,
