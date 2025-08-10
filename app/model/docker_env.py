@@ -1,18 +1,16 @@
+from docker.client import DockerClient
+
 from app.utils.networking import (
     create_docker_network,
     remove_docker_network,
-    get_bridge_name,
     get_host_ip_address,
 )
 from environment import Environment
 from app.model.status import EnvStatus
-import docker
 from docker.errors import ImageNotFound, APIError, DockerException, ContainerError
 from docker.models.networks import Network
 import logging
 from app.config import Config
-
-docker_client = docker.from_env()
 
 
 class DockerEnvException(Exception):
@@ -27,19 +25,21 @@ class DockerEnvException(Exception):
 class DockerEnvironment(Environment):
     def __init__(
         self,
+        docker_client: DockerClient,
         name: str,
         image: str,
         index: int,
         internal_ports: list,
         published_ports: list,
-        network: Network,
+        docker_network: Network,
         cluster_id: int,
         args: dict,
     ):
         super().__init__(name, internal_ports, published_ports, args)
+        self.docker_client = docker_client
         self.image = image
         self.index = index
-        self.network = network
+        self.docker_network = docker_network
         self.cluster_id = cluster_id
 
         self.ip = get_host_ip_address(
@@ -50,20 +50,11 @@ class DockerEnvironment(Environment):
         logging.info(f"Created docker environment {name}")
 
     def _on_started(self):
-        if self.container is None:
-            logging.warning(
-                f"Tried to stop {self.name}, but environment was not started"
-            )
-            return
-
-        self.network.connect(self.container.id, ipv4_address=self.ip)
-        logging.debug(
-            f"Docker {self.name} has connected to network {self.network.name} with id {self.container.id}"
-        )
+        pass
 
     def start(self):
         try:
-            self.container = docker_client.containers.run(
+            self.container = self.docker_client.containers.run(
                 self.image,
                 detach=True,
                 ports={
@@ -72,6 +63,7 @@ class DockerEnvironment(Environment):
                         self.internal_ports, self.published_ports
                     )
                 },
+                network=self.docker_network.name,
                 name=self.name,
                 environment={**self.args},
             )
@@ -125,7 +117,7 @@ class DockerEnvironment(Environment):
         if self.container is None:
             return EnvStatus.UNKNOWN
 
-        docker_status = docker_client.containers.get(self.container.id).status
+        docker_status = self.docker_client.containers.get(self.container.id).status
         logging.debug(f"Checked docker {self.name} status: {docker_status}")
         return (
             EnvStatus(docker_status)
@@ -157,44 +149,50 @@ class DockerEnvironment(Environment):
 
 
 if __name__ == "__main__":
-    cluster_id = 100
-    bridge_name = get_bridge_name(cluster_id)
-    network_name = "docker-test"
+    cluster_id = 0
 
-    docker_network = create_docker_network(
-        docker_client, network_name, bridge_name, cluster_id
-    )
+    from app.utils.networking import create_network, remove_network
+    import docker
+    import libvirt
+    import os
+
+    docker_client = docker.from_env()
+    libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
+
+    network_name = "venvbr0"
+    create_network(network_name, cluster_id)
+    docker_network = create_docker_network(docker_client, network_name, cluster_id)
+
     print(docker_network)
     print(docker_client.images.list())
 
     container1 = DockerEnvironment(
+        docker_client,
         name="test1",
         image="www",
         index=0,
-        internal_ports=[80],
-        published_ports=[5000],
-        network=docker_network,
+        internal_ports=[80, 22],
+        published_ports=[5000, 5002],
+        docker_network=docker_network,
         cluster_id=cluster_id,
         args={"FLAG": "TEST123"},
     )
 
     container2 = DockerEnvironment(
+        docker_client,
         name="test2",
         image="ssh",
         index=1,
         internal_ports=[22],
         published_ports=[5001],
-        network=docker_network,
+        docker_network=docker_network,
         cluster_id=cluster_id,
         args={"FLAG": "TEST123"},
     )
     print(container2)
 
     container1.start()
-    # container1.on_started()
-
     container2.start()
-    # container2.on_started()
 
     input("Press Enter to remove container...")
 
@@ -202,3 +200,4 @@ if __name__ == "__main__":
     container2.destroy()
 
     remove_docker_network(docker_network)
+    remove_network(network_name)

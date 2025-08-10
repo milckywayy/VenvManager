@@ -1,6 +1,7 @@
+import os
 import time
-
-from docker.client import DockerClient
+import libvirt
+import docker
 
 from app import load_env
 from app.model.docker_env import DockerEnvironment
@@ -8,10 +9,14 @@ from app.model.environment import Environment
 from app.model.status import EnvStatus
 from app.model.vm_env import VMEnvironment
 from app.utils.networking import (
-    get_bridge_name,
     create_docker_network,
     remove_docker_network,
+    create_network,
+    remove_network,
 )
+
+docker_client = docker.from_env()
+libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
 
 
 class Cluster:
@@ -20,10 +25,12 @@ class Cluster:
         self.id = cluster_id
         self.environments = []
 
-        self.docker_client = DockerClient()
-        self.bridge_name = get_bridge_name(self.id)
+        self.network_name = f"venvbr{self.id}"
+
+        create_network(self.network_name, cluster_id)
+
         self.docker_network = create_docker_network(
-            self.docker_client, self.name, self.bridge_name, self.id
+            docker_client, self.network_name, self.id
         )
 
     def _all_env_running(self):
@@ -56,6 +63,7 @@ class Cluster:
             env.destroy()
 
         remove_docker_network(self.docker_network)
+        remove_network(self.network_name)
 
 
 if __name__ == "__main__":
@@ -65,12 +73,13 @@ if __name__ == "__main__":
 
     cluster.add_environment(
         DockerEnvironment(
+            docker_client,
             name="test1",
             image="www",
             index=len(cluster.environments),
-            internal_ports=[80],
-            published_ports=[5000],
-            network=cluster.docker_network,
+            internal_ports=[80, 22],
+            published_ports=[5000, 5002],
+            docker_network=cluster.docker_network,
             cluster_id=cluster.id,
             args={"FLAG": "TEST123"},
         )
@@ -78,12 +87,13 @@ if __name__ == "__main__":
 
     cluster.add_environment(
         DockerEnvironment(
+            docker_client,
             name="test2",
             image="ssh",
             index=len(cluster.environments),
             internal_ports=[22],
             published_ports=[5001],
-            network=cluster.docker_network,
+            docker_network=cluster.docker_network,
             cluster_id=cluster.id,
             args={"FLAG": "TEST123"},
         )
@@ -91,22 +101,68 @@ if __name__ == "__main__":
 
     cluster.add_environment(
         VMEnvironment(
+            libvirt_client,
             name="windows1",
             template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml",
             base_image_name="/var/lib/libvirt/images/win7pro.qcow2",
             internal_ports=[3389],
             published_ports=[2137],
-            network_name=cluster.bridge_name,
+            network_name=cluster.network_name,
+            args={"FLAG": "TEST123"},
+        )
+    )
+
+    cluster2 = Cluster("test2", 1)
+
+    cluster2.add_environment(
+        DockerEnvironment(
+            docker_client,
+            name="testxca",
+            image="www",
+            index=len(cluster2.environments),
+            internal_ports=[80, 22],
+            published_ports=[6000, 6002],
+            docker_network=cluster2.docker_network,
+            cluster_id=cluster2.id,
+            args={"FLAG": "TEST123"},
+        )
+    )
+
+    cluster2.add_environment(
+        DockerEnvironment(
+            docker_client,
+            name="testfafa2",
+            image="ssh",
+            index=len(cluster2.environments),
+            internal_ports=[22],
+            published_ports=[6001],
+            docker_network=cluster2.docker_network,
+            cluster_id=cluster2.id,
+            args={"FLAG": "TEST123"},
+        )
+    )
+
+    cluster2.add_environment(
+        VMEnvironment(
+            libvirt_client,
+            name="windodasdaws1",
+            template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml",
+            base_image_name="/var/lib/libvirt/images/win7pro.qcow2",
+            internal_ports=[3389],
+            published_ports=[3137],
+            network_name=cluster2.network_name,
             args={"FLAG": "TEST123"},
         )
     )
 
     cluster.start()
+    cluster2.start()
 
-    while not cluster.is_ready():
+    while not cluster.is_ready() and not cluster2.is_ready():
         print("Waiting...")
         time.sleep(1)
 
     input("click to destroy...")
 
     cluster.destroy()
+    cluster2.destroy()

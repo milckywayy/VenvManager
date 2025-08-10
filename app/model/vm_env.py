@@ -6,15 +6,13 @@ import uuid
 from time import sleep
 
 from app import load_env
-from app.utils.networking import get_bridge_name, forward_port
+from app.utils.networking import forward_port
 import xml.etree.ElementTree as ET
 from app.utils.vm_overlay import create_overlay, remove_overlay
 from environment import Environment
 from app.model.status import EnvStatus
 import libvirt
 import logging
-
-libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
 
 
 class VMEnvException(Exception):
@@ -29,6 +27,7 @@ class VMEnvException(Exception):
 class VMEnvironment(Environment):
     def __init__(
         self,
+        libvirt_client: libvirt.virConnect,
         name: str,
         template_name: str,
         base_image_name: str,
@@ -38,6 +37,7 @@ class VMEnvironment(Environment):
         args: dict,
     ):
         super().__init__(name, internal_ports, published_ports, args)
+        self.libvirt_client = libvirt_client
         self.template_path = os.path.join(os.getenv("VM_TEMPLATES_PATH"), template_name)
         self.base_image_path = os.path.join(
             os.getenv("VM_BASE_IMAGES_PATH"), base_image_name
@@ -102,8 +102,9 @@ class VMEnvironment(Environment):
 
             for interface in root.findall(".//devices/interface"):
                 source = interface.find("source")
-                if source is not None and source.attrib.get("bridge") == os.getenv(
-                    "VM_DEFAULT_BRIDGE"
+                if (
+                    source is not None
+                    and source.attrib.get("bridge") == self.network_name
                 ):
                     mac_elem = interface.find("mac")
                     if mac_elem is not None:
@@ -150,7 +151,7 @@ class VMEnvironment(Environment):
             raise VMEnvException(f"Failed to start VM {self.name}: {e}")
 
         try:
-            self.domain = libvirt_client.defineXML(xml)
+            self.domain = self.libvirt_client.defineXML(xml)
             self.domain.create()
         except libvirt.libvirtError as e:
             logging.error(f"Failed to start VM {self.name}: {e}")
@@ -226,10 +227,18 @@ class VMEnvironment(Environment):
 
 
 def test_ubuntu():
-    cluster_id = 1
-    network_name = get_bridge_name(cluster_id)
+    cluster_id = 0
+
+    from app.utils.networking import create_network, remove_network
+    import libvirt
+
+    libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
+
+    network_name = "venvbr0"
+    create_network(network_name, cluster_id)
 
     vm1 = VMEnvironment(
+        libvirt_client,
         name="ctf-vm01",
         template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml",
         base_image_name="/var/lib/libvirt/images/ubuntu18.04.qcow2",
@@ -240,6 +249,7 @@ def test_ubuntu():
     )
 
     vm2 = VMEnvironment(
+        libvirt_client,
         name="ctf-vm02",
         template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml",
         base_image_name="/var/lib/libvirt/images/ubuntu18.04.qcow2",
@@ -263,12 +273,22 @@ def test_ubuntu():
     vm1.destroy()
     vm2.destroy()
 
+    remove_network(network_name)
+
 
 def test_windows():
-    cluster_id = 100
-    network_name = get_bridge_name(cluster_id)
+    cluster_id = 0
+
+    from app.utils.networking import create_network, remove_network
+    import libvirt
+
+    libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
+
+    network_name = "venvbr0"
+    create_network(network_name, cluster_id)
 
     vm1 = VMEnvironment(
+        libvirt_client,
         name="windows1",
         template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml",
         base_image_name="/var/lib/libvirt/images/win7pro.qcow2",
@@ -288,6 +308,8 @@ def test_windows():
 
     input("Press Enter to remove vm...")
     vm1.destroy()
+
+    remove_network(network_name)
 
 
 if __name__ == "__main__":
