@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from app.model.status import EnvStatus
+from app.models.status import EnvStatus
 
 
 class Environment(ABC):

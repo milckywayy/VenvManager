@@ -5,7 +5,7 @@ from app.utils.networking import (
     remove_docker_network,
 )
 from environment import Environment
-from app.model.status import EnvStatus
+from app.models.status import EnvStatus
 from docker.errors import ImageNotFound, APIError, DockerException, ContainerError
 from docker.models.networks import Network
 import logging
