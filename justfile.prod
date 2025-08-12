@@ -1,6 +1,6 @@
 set shell := ["bash", "-c"]
-export COMPOSE_FILE := "docker-compose.dev.yml"
-export FLASK_ENV := "development"
+export COMPOSE_FILE := "docker-compose.prod.yml"
+export FLASK_ENV := "production"
 
 
 default:
@@ -14,7 +14,7 @@ run:
     set -euo pipefail
     trap 'docker compose -f {{COMPOSE_FILE}} down' EXIT
     docker compose up -d --remove-orphans
-    python3 run.py
+    gunicorn "app:create_app()" --bind 0.0.0.0:8000 --workers 4
 
 prune:
     @docker compose down -v
