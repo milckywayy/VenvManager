@@ -30,9 +30,8 @@ class DockerEnvironment(Environment):
         published_ports: list,
         docker_network: Network,
         cluster_id: int,
-        args: dict,
     ):
-        super().__init__(name, internal_ports, published_ports, args)
+        super().__init__(name, internal_ports, published_ports)
         self.docker_client = docker_client
         self.image = image
         self.docker_network = docker_network
@@ -156,7 +155,6 @@ if __name__ == "__main__":
         published_ports=[5000, 5002],
         docker_network=docker_network,
         cluster_id=cluster_id,
-        args={"FLAG": "TEST123"},
     )
 
     container2 = DockerEnvironment(
@@ -167,7 +165,6 @@ if __name__ == "__main__":
         published_ports=[5001],
         docker_network=docker_network,
         cluster_id=cluster_id,
-        args={"FLAG": "TEST123"},
     )
     print(container2)
 

@@ -11,4 +11,5 @@ dependencies = [
     "libvirt-python==11.6.0",
     "flask-sqlalchemy==3.1.1",
     "psycopg2-binary==2.9.10",
+    "flask-migrate==4.1.0"
 ]

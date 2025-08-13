@@ -34,9 +34,8 @@ class VMEnvironment(Environment):
         internal_ports: list,
         published_ports: list,
         network_name: str,
-        args: dict,
     ):
-        super().__init__(name, internal_ports, published_ports, args)
+        super().__init__(name, internal_ports, published_ports)
         self.libvirt_client = libvirt_client
         self.template_path = os.path.join(os.getenv("VM_TEMPLATES_PATH"), template_name)
         self.base_image_path = os.path.join(
@@ -235,7 +234,6 @@ def test_ubuntu():
         internal_ports=[22],
         published_ports=[10022],
         network_name=network_name,
-        args={"FLAG": "TEST123"},
     )
 
     vm2 = VMEnvironment(
@@ -246,7 +244,6 @@ def test_ubuntu():
         internal_ports=[22],
         published_ports=[10023],
         network_name=network_name,
-        args={"FLAG": "TEST123"},
     )
 
     vm1.start()
@@ -285,7 +282,6 @@ def test_windows():
         internal_ports=[3389],
         published_ports=[2137],
         network_name=network_name,
-        args={"FLAG": "TEST123"},
     )
 
     vm1.start()

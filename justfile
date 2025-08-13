@@ -18,3 +18,8 @@ run:
 
 prune:
     @docker compose down -v
+
+db +args:
+    @docker compose up -d --remove-orphans
+    flask db {{args}}
+    @docker compose down

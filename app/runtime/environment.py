@@ -4,9 +4,7 @@ from app.models.status import EnvStatus
 
 
 class Environment(ABC):
-    def __init__(
-        self, name: str, internal_ports: list, published_ports: list, args: dict
-    ):
+    def __init__(self, name: str, internal_ports: list, published_ports: list):
         # TODO add network parsing
         self.name = name
 
@@ -15,7 +13,6 @@ class Environment(ABC):
 
         self.internal_ports = internal_ports
         self.published_ports = published_ports
-        self.args = args
 
     @abstractmethod
     def start(self):

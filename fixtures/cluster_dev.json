@@ -1,0 +1,31 @@
+{
+  "name": "test_cluster",
+  "environments": [
+    {
+      "name": "web1",
+      "type": "docker",
+      "image": "www",
+      "ports": [
+        {"internal": 80, "published": 5000},
+        {"internal": 22, "published": 5002}
+      ]
+    },
+    {
+      "name": "ssh1",
+      "type": "docker",
+      "image": "ssh",
+      "ports": [
+        {"internal": 22, "published": 5001}
+      ]
+    },
+    {
+      "name": "win1",
+      "type": "vm",
+      "template_path": "/home/USER/PycharmProjects/VenvManager/temp/windows_vm_template.xml",
+      "base_image_path": "/var/lib/libvirt/images/win7pro.qcow2",
+      "ports": [
+        {"internal": 3389, "published": 2137}
+      ]
+    }
+  ]
+}

@@ -1,14 +1,15 @@
 import logging
-from flask import Flask, jsonify
+from flask import Flask
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
-
-from app.routes.main import main_bp
-from app.utils.logging import setup_logging
-from app.load_env import load_env
 import os
 
+from app.load_env import load_env
+from app.routes.main import main_bp
+from app.utils.logging import setup_logging
+
 db = SQLAlchemy()
+migrate = Migrate()
 
 
 def _build_db_url() -> str:
@@ -41,14 +42,12 @@ def create_app():
         "pool_pre_ping": True,
         "pool_recycle": 300,
     }
+
     db.init_app(app)
+    with app.app_context():
+        from app.models import environment  # noqa: F401
+    migrate.init_app(app, db)
 
     app.register_blueprint(main_bp)
-
-    @app.get("/ping-db")
-    def ping_db():
-        with db.engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        return jsonify(ok=True)
 
     return app

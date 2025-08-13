@@ -80,7 +80,6 @@ if __name__ == "__main__":
             published_ports=[5000, 5002],
             docker_network=cluster.docker_network,
             cluster_id=cluster.id,
-            args={"FLAG": "TEST123"},
         )
     )
 
@@ -93,7 +92,6 @@ if __name__ == "__main__":
             published_ports=[5001],
             docker_network=cluster.docker_network,
             cluster_id=cluster.id,
-            args={"FLAG": "TEST123"},
         )
     )
 
@@ -106,7 +104,6 @@ if __name__ == "__main__":
             internal_ports=[3389],
             published_ports=[2137],
             network_name=cluster.network_name,
-            args={"FLAG": "TEST123"},
         )
     )
 
@@ -121,7 +118,6 @@ if __name__ == "__main__":
             published_ports=[6000, 6002],
             docker_network=cluster2.docker_network,
             cluster_id=cluster2.id,
-            args={"FLAG": "TEST123"},
         )
     )
 
@@ -134,7 +130,6 @@ if __name__ == "__main__":
             published_ports=[6001],
             docker_network=cluster2.docker_network,
             cluster_id=cluster2.id,
-            args={"FLAG": "TEST123"},
         )
     )
 
@@ -147,7 +142,6 @@ if __name__ == "__main__":
             internal_ports=[3389],
             published_ports=[3137],
             network_name=cluster2.network_name,
-            args={"FLAG": "TEST123"},
         )
     )
 
