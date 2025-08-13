@@ -1,14 +1,14 @@
 import logging
 from flask import Flask
 from flask_migrate import Migrate
-from flask_sqlalchemy import SQLAlchemy
 import os
 
 from app.load_env import load_env
 from app.routes.main import main_bp
+from app.routes.creator import creator_bp
 from app.utils.logging import setup_logging
+from .extensions import db
 
-db = SQLAlchemy()
 migrate = Migrate()
 
 
@@ -49,5 +49,6 @@ def create_app():
     migrate.init_app(app, db)
 
     app.register_blueprint(main_bp)
+    app.register_blueprint(creator_bp)
 
     return app

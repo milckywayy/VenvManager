@@ -1,4 +1,4 @@
-from app import db
+from app.extensions import db
 from app.models import Cluster, Environment, DockerEnvironment, VMEnvironment
 
 
@@ -10,20 +10,16 @@ def create_cluster(name: str) -> Cluster:
     return cluster
 
 
-def create_docker_env(
-    cluster_id: int, name: str, image: str, ports: list[dict]
-) -> Environment:
-    env = Environment(cluster_id=cluster_id, name=name, ports=ports)
+def create_docker_env(name: str, image: str, ports: list[dict]) -> Environment:
+    env = Environment(cluster_id=None, name=name, ports=ports)
     env.docker = DockerEnvironment(image=image)
     db.session.add(env)
     db.session.commit()
     return env
 
 
-def create_vm_env(
-    cluster_id: int, name: str, template_path: str, base_image_path: str
-) -> Environment:
-    env = Environment(cluster_id=cluster_id, name=name)
+def create_vm_env(name: str, template_path: str, base_image_path: str) -> Environment:
+    env = Environment(name=name)
     env.vm = VMEnvironment(template_path=template_path, base_image_path=base_image_path)
     db.session.add(env)
     db.session.commit()

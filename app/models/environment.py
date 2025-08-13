@@ -1,4 +1,4 @@
-from app import db
+from app.extensions import db
 from sqlalchemy.orm import validates
 
 
@@ -8,11 +8,18 @@ class Cluster(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False, unique=True, index=True)
 
-    environments = db.relationship(
-        "Environment",
+    environment_links = db.relationship(
+        "ClusterEnvironment",
         back_populates="cluster",
         cascade="all, delete-orphan",
         passive_deletes=True,
+    )
+
+    environments = db.relationship(
+        "Environment",
+        secondary="cluster_environments",
+        back_populates="clusters",
+        viewonly=True,
     )
 
     def __repr__(self):
@@ -26,13 +33,19 @@ class Environment(db.Model):
     name = db.Column(db.String(120), nullable=False, index=True)
     ports = db.Column(db.JSON, nullable=True, default=list)
 
-    cluster_id = db.Column(
-        db.Integer,
-        db.ForeignKey("clusters.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
+    cluster_links = db.relationship(
+        "ClusterEnvironment",
+        back_populates="environment",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
-    cluster = db.relationship("Cluster", back_populates="environments")
+
+    clusters = db.relationship(
+        "Cluster",
+        secondary="cluster_environments",
+        back_populates="environments",
+        viewonly=True,
+    )
 
     docker = db.relationship(
         "DockerEnvironment",
@@ -69,6 +82,30 @@ class Environment(db.Model):
                 raise ValueError(f"invalid port mapping: {p}")
             cleaned.append({"internal": internal, "published": published})
         return cleaned
+
+
+class ClusterEnvironment(db.Model):
+    __tablename__ = "cluster_environments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    cluster_id = db.Column(
+        db.Integer,
+        db.ForeignKey("clusters.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    environment_id = db.Column(
+        db.Integer,
+        db.ForeignKey("environments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    cluster = db.relationship("Cluster", back_populates="environment_links")
+    environment = db.relationship("Environment", back_populates="cluster_links")
+
+    def __repr__(self):
+        return f"<ClusterEnvironment id={self.id} cluster_id={self.cluster_id} environment_id={self.environment_id} alias={self.alias!r}>"
 
 
 class DockerEnvironment(db.Model):
