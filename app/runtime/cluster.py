@@ -69,7 +69,17 @@ class Cluster:
 if __name__ == "__main__":
     load_env("../../")
 
+    remove_network("venvbr0")
+
     cluster = Cluster("test", 0)
+
+    template = ""
+    with open(
+        "/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml", "r"
+    ) as f:
+        template = f.read()
+
+    print("1")
 
     cluster.add_environment(
         DockerEnvironment(
@@ -82,6 +92,8 @@ if __name__ == "__main__":
             cluster_id=cluster.id,
         )
     )
+
+    print("2")
 
     cluster.add_environment(
         DockerEnvironment(
@@ -99,7 +111,7 @@ if __name__ == "__main__":
         VMEnvironment(
             libvirt_client,
             name="windows1",
-            template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml",
+            template=template,
             base_image_name="/var/lib/libvirt/images/win7pro.qcow2",
             internal_ports=[3389],
             published_ports=[2137],
@@ -107,52 +119,53 @@ if __name__ == "__main__":
         )
     )
 
-    cluster2 = Cluster("test2", 1)
-
-    cluster2.add_environment(
-        DockerEnvironment(
-            docker_client,
-            name="testxca",
-            image="www",
-            internal_ports=[80, 22],
-            published_ports=[6000, 6002],
-            docker_network=cluster2.docker_network,
-            cluster_id=cluster2.id,
-        )
-    )
-
-    cluster2.add_environment(
-        DockerEnvironment(
-            docker_client,
-            name="testfafa2",
-            image="ssh",
-            internal_ports=[22],
-            published_ports=[6001],
-            docker_network=cluster2.docker_network,
-            cluster_id=cluster2.id,
-        )
-    )
-
-    cluster2.add_environment(
-        VMEnvironment(
-            libvirt_client,
-            name="windodasdaws1",
-            template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml",
-            base_image_name="/var/lib/libvirt/images/win7pro.qcow2",
-            internal_ports=[3389],
-            published_ports=[3137],
-            network_name=cluster2.network_name,
-        )
-    )
+    # cluster2 = Cluster("test2", 1)
+    #
+    # cluster2.add_environment(
+    #     VMEnvironment(
+    #         libvirt_client,
+    #         name="windodasdaws1",
+    #         template=template,
+    #         base_image_name="/var/lib/libvirt/images/win7pro.qcow2",
+    #         internal_ports=[3389],
+    #         published_ports=[3137],
+    #         network_name=cluster2.network_name,
+    #     )
+    # )
+    #
+    # cluster2.add_environment(
+    #     DockerEnvironment(
+    #         docker_client,
+    #         name="testxca",
+    #         image="www",
+    #         internal_ports=[80, 22],
+    #         published_ports=[6000, 6002],
+    #         docker_network=cluster2.docker_network,
+    #         cluster_id=cluster2.id,
+    #     )
+    # )
+    #
+    # cluster2.add_environment(
+    #     DockerEnvironment(
+    #         docker_client,
+    #         name="testfafa2",
+    #         image="ssh",
+    #         internal_ports=[22],
+    #         published_ports=[6001],
+    #         docker_network=cluster2.docker_network,
+    #         cluster_id=cluster2.id,
+    #     )
+    # )
 
     cluster.start()
-    cluster2.start()
+    # cluster2.start()
 
-    while not cluster.is_ready() and not cluster2.is_ready():
+    # while not cluster.is_ready() and not cluster2.is_ready():
+    while not cluster.is_ready():
         print("Waiting...")
         time.sleep(1)
 
     input("click to destroy...")
 
     cluster.destroy()
-    cluster2.destroy()
+    # cluster2.destroy()

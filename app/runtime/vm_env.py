@@ -29,7 +29,7 @@ class VMEnvironment(Environment):
         self,
         libvirt_client: libvirt.virConnect,
         name: str,
-        template_name: str,
+        template: str,
         base_image_name: str,
         internal_ports: list,
         published_ports: list,
@@ -37,7 +37,7 @@ class VMEnvironment(Environment):
     ):
         super().__init__(name, internal_ports, published_ports)
         self.libvirt_client = libvirt_client
-        self.template_path = os.path.join(os.getenv("VM_TEMPLATES_PATH"), template_name)
+        self.template = template
         self.base_image_path = os.path.join(
             os.getenv("VM_BASE_IMAGES_PATH"), base_image_name
         )
@@ -60,11 +60,6 @@ class VMEnvironment(Environment):
                 forward_port(self._get_ip(), internal_port, published_port)
             )
 
-    def _load_template(self):
-        logging.debug(f"Loading template for {self.name} from {self.template_path}")
-        with open(self.template_path, "r") as f:
-            return f.read()
-
     def _render_xml(self):
         required_placeholders = [
             "{{VM_NAME}}",
@@ -73,7 +68,7 @@ class VMEnvironment(Environment):
             "{{NETWORK_NAME}}",
         ]
 
-        xml = self._load_template()
+        xml = self.template
 
         missing = [ph for ph in required_placeholders if ph not in xml]
         if missing:
@@ -226,10 +221,16 @@ def test_ubuntu():
     network_name = "venvbr0"
     create_network(network_name, cluster_id)
 
+    template = ""
+    with open(
+        "/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml", "r"
+    ) as f:
+        template = f.read()
+
     vm1 = VMEnvironment(
         libvirt_client,
         name="ctf-vm01",
-        template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml",
+        template=template,
         base_image_name="/var/lib/libvirt/images/ubuntu18.04.qcow2",
         internal_ports=[22],
         published_ports=[10022],
@@ -239,7 +240,7 @@ def test_ubuntu():
     vm2 = VMEnvironment(
         libvirt_client,
         name="ctf-vm02",
-        template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml",
+        template=template,
         base_image_name="/var/lib/libvirt/images/ubuntu18.04.qcow2",
         internal_ports=[22],
         published_ports=[10023],
@@ -274,10 +275,16 @@ def test_windows():
     network_name = "venvbr0"
     create_network(network_name, cluster_id)
 
+    template = ""
+    with open(
+        "/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml", "r"
+    ) as f:
+        template = f.read()
+
     vm1 = VMEnvironment(
         libvirt_client,
         name="windows1",
-        template_name="/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml",
+        template=template,
         base_image_name="/var/lib/libvirt/images/win7pro.qcow2",
         internal_ports=[3389],
         published_ports=[2137],

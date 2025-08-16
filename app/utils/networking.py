@@ -80,15 +80,12 @@ def create_network(network_name: str, cluster_id: int) -> str:
     subprocess.run(["virsh", "net-start", network_name], check=True)
     subprocess.run(["virsh", "net-autostart", network_name], check=True)
 
-    print(f"Utworzono i uruchomiono sieć libvirt: {network_name}")
     return network_name
 
 
 def remove_network(network_name: str):
     subprocess.run(["virsh", "net-destroy", network_name], check=False)
     subprocess.run(["virsh", "net-undefine", network_name], check=False)
-
-    print(f"Usunięto sieć libvirt: {network_name}")
 
 
 def create_docker_network(
@@ -115,16 +112,12 @@ def create_docker_network(
 
 def remove_docker_network(docker_network: Optional[Network]) -> bool:
     if docker_network is None:
-        print("No Docker network to remove.")
         return False
 
-    name = docker_network.name
     try:
         docker_network.remove()
-        print(f"Network '{name}' removed successfully.")
         return True
-    except APIError as e:
-        print(f"Failed to remove network '{name}': {e}")
+    except APIError:
         return False
 
 

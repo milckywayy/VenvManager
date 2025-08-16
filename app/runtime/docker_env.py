@@ -56,7 +56,7 @@ class DockerEnvironment(Environment):
                 },
                 network=self.docker_network.name,
                 name=self.name,
-                environment={**self.args},
+                environment={},
             )
             logging.info(f"Started docker environment {self.name}")
 
@@ -141,6 +141,7 @@ if __name__ == "__main__":
     libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
 
     network_name = "venvbr0"
+    remove_network(network_name)
     create_network(network_name, cluster_id)
     docker_network = create_docker_network(docker_client, network_name, cluster_id)
 

@@ -129,7 +129,7 @@ class VMEnvironment(db.Model):
         db.ForeignKey("environments.id", ondelete="CASCADE"),
         primary_key=True,
     )
-    template_path = db.Column(db.String(512), nullable=False)
+    template = db.Column(db.JSON, nullable=False)
     base_image_path = db.Column(db.String(512), nullable=False)
 
     environment = db.relationship("Environment", back_populates="vm")
