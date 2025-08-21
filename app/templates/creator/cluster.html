@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Cluster</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        form { max-width: 700px; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; margin-top: 5px; }
+        .env-list { border: 1px solid #ccc; padding: 10px; margin-top: 10px; max-height: 320px; overflow: auto; }
+        .env-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed #eee; }
+        .env-row:last-child { border-bottom: none; }
+        .env-row .meta { font-size: 12px; color: #666; }
+        .search { display: flex; gap: 10px; margin-top: 10px; }
+        .search input { flex: 1; }
+        .warning { background: #fff3cd; border: 1px solid #ffeeba; padding: 10px; margin-top: 10px; }
+        .ok { background: #e8f5e9; border: 1px solid #c8e6c9; padding: 10px; margin-top: 10px; }
+        .error { background: #fdecea; border: 1px solid #f5c6cb; padding: 10px; margin-top: 10px; }
+        button[type="submit"] { margin-top: 15px; padding: 10px 15px; }
+    </style>
+    <script>
+        function filterEnvs() {
+            const q = document.getElementById('env-search').value.toLowerCase().trim();
+            const rows = document.querySelectorAll('.env-row');
+            rows.forEach(r => {
+                const txt = r.dataset.searchable;
+                r.style.display = txt.includes(q) ? '' : 'none';
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>Create a new cluster</h1>
+
+    {% if message %}
+      <div class="ok">{{ message }}</div>
+    {% endif %}
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('creator.make_cluster') }}">
+        <label for="name">Cluster name</label>
+        <input type="text" id="name" name="name" required>
+
+        <label>Environments (select one or more)</label>
+        {% if environments and environments|length > 0 %}
+            <div class="search">
+                <input type="text" id="env-search" placeholder="Filter environments..." oninput="filterEnvs()">
+            </div>
+            <div class="env-list">
+                {% for env in environments %}
+                    <div class="env-row" data-searchable="{{ (env.name ~ ' ' ~ (env.docker.image if env.docker else '') ~ ' ' ~ (env.vm.base_image_path if env.vm else '')) | lower }}">
+                        <input type="checkbox" id="env-{{ env.id }}" name="environment_ids" value="{{ env.id }}">
+                        <label for="env-{{ env.id }}">
+                            <strong>{{ env.name }}</strong>
+                            <div class="meta">
+                                {% if env.docker %}
+                                    Docker: {{ env.docker.image }}
+                                {% elif env.vm %}
+                                    VM: {{ env.vm.base_image_path }}
+                                {% else %}
+                                    (no backend attached)
+                                {% endif %}
+                                {% if env.ports and env.ports|length > 0 %}
+                                    · Ports: {{ env.ports | map(attribute='published') | list }}
+                                {% endif %}
+                            </div>
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="warning">No environments found. Create a Docker or VM environment first, then come back here.</div>
+        {% endif %}
+
+        <button type="submit" {% if not environments or environments|length == 0 %}disabled{% endif %}>Create cluster</button>
+    </form>
+</body>
+</html>

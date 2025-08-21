@@ -4,7 +4,12 @@ import docker
 import xml.etree.ElementTree as ET
 import libvirt
 
-from app.services.environment import create_docker_env, create_vm_env
+from app.models import Cluster, Environment
+from app.services.environment import (
+    create_docker_env,
+    create_vm_env,
+    create_cluster_with_envs,
+)
 
 docker_client = docker.from_env()
 libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
@@ -80,3 +85,34 @@ def make_vm():
                 break
 
     return render_template("creator/vm.html", images=images)
+
+
+@creator_bp.route("/cluster", methods=["GET", "POST"])
+def make_cluster():
+    message = None
+    error = None
+
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        env_ids = [int(x) for x in request.form.getlist("environment_ids")]
+
+        if not name:
+            raise ValueError("Cluster name is required.")
+        if Cluster.query.filter_by(name=name).first():
+            raise ValueError(f"Cluster named '{name}' already exists.")
+
+        create_cluster_with_envs(name=name, environment_ids=env_ids)
+
+    environments = (
+        Environment.query.outerjoin(Environment.docker)
+        .outerjoin(Environment.vm)
+        .order_by(Environment.name.asc())
+        .all()
+    )
+
+    return render_template(
+        "creator/cluster.html",
+        environments=environments,
+        message=message,
+        error=error,
+    )
