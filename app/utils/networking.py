@@ -15,7 +15,7 @@ IFACE_XML = """
 <network>
   <name>{network_name}</name>
   <forward mode="nat"/>
-  <bridge name="{network_name}" stp="on" delay="0"/>
+  <bridge name="{network_name}" stp="on" delay="0" zone="docker"/>
   <ip address="{gateway_ip}" netmask="255.255.255.0">
     <dhcp>
       <range start="{start_ip}" end="{end_ip}"/>
