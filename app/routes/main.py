@@ -1,10 +1,11 @@
-import os
+from flask import Blueprint, render_template
 
-from flask import Blueprint
+from app.models import Cluster
 
 main_bp = Blueprint("main", __name__)
 
 
 @main_bp.route("/")
-def hello_world():
-    return f"Hello World! debug={bool(int(os.getenv('DEBUG')))}"
+def home():
+    clusters = Cluster.query.join(Cluster.environments).all()
+    return render_template("index.html", clusters=clusters)

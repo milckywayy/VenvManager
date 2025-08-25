@@ -1,0 +1,111 @@
+{# templates/clusters/index.html #}
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Klastry</title>
+    <style>
+      :root { --fg:#222; --muted:#666; --border:#e5e7eb; --bg:#fff; --chip:#f3f4f6; }
+      body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji"; color:var(--fg); margin: 2rem; background: var(--bg); }
+      h1 { margin: 0 0 1rem; font-size: 1.75rem; }
+      .empty { color:var(--muted); padding:2rem; border:1px dashed var(--border); border-radius:12px; background: #fafafa; }
+      .card { border:1px solid var(--border); border-radius:14px; padding:1rem 1.25rem; margin-bottom:1rem; }
+      .card h2 { font-size:1.1rem; margin:0; }
+      .muted { color:var(--muted); font-weight:500; }
+      .grid { display:grid; gap:0.75rem; }
+      @media(min-width:900px){ .grid { grid-template-columns: 1fr 2fr; } }
+      details { border:1px solid var(--border); border-radius:10px; padding:0.75rem 0.9rem; background:#fff; }
+      summary { cursor:pointer; font-weight:600; }
+      table { width:100%; border-collapse: collapse; margin-top:0.5rem; }
+      th, td { text-align:left; border-bottom:1px solid var(--border); padding:0.5rem 0.25rem; vertical-align: top; }
+      .chip { display:inline-block; padding:0.2rem 0.5rem; background:var(--chip); border-radius:999px; font-size:0.85rem; }
+      .ports { display:flex; flex-wrap:wrap; gap:0.35rem; }
+      .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.9rem; background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.5rem; display:inline-block; }
+      .hint { font-size:0.9rem; color:var(--muted); margin-top:0.5rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Klastry</h1>
+
+    {% if not clusters %}
+      <div class="empty">
+        Brak utworzonych klastrów. Dodaj pierwszy klaster, aby zobaczyć go na liście.
+      </div>
+    {% else %}
+      {% for cluster in clusters %}
+        <div class="card">
+          <div class="grid">
+            <div>
+              <h2>{{ cluster.name }}</h2>
+              <div class="muted">
+                ID: <span class="code">{{ cluster.id }}</span>
+              </div>
+            </div>
+            <div>
+              <details {% if cluster.environments %}open{% endif %}>
+                <summary>
+                  Środowiska ({{ cluster.environments|length }})
+                </summary>
+
+                {% if not cluster.environments %}
+                  <div class="hint">Ten klaster nie ma jeszcze przypisanych środowisk.</div>
+                {% else %}
+                  <table aria-label="Lista środowisk">
+                    <thead>
+                      <tr>
+                        <th>Nazwa</th>
+                        <th>Porty</th>
+                        <th>Obraz</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for env in cluster.environments %}
+                        <tr>
+                          <td>
+                            <div><strong>{{ env.name }}</strong></div>
+                            <div class="muted">
+                              {% if env.docker %}
+                                <span class="code">Docker</span>
+                              {% elif env.vm %}
+                                <span class="code">VM</span>
+                              {% else %}
+                                <span class="muted">Brak</span>
+                              {% endif %}
+                            </div>
+                          </td>
+
+                          <td>
+                            {% if env.ports %}
+                              <div class="ports">
+                                {% for p in env.ports %}
+                                  <span class="chip">{{ p.internal }} → {{ p.published }}</span>
+                                {% endfor %}
+                              </div>
+                            {% else %}
+                              <span class="muted">—</span>
+                            {% endif %}
+                          </td>
+
+                          <td>
+                            {% if env.docker %}
+                              <div class="code">{{ env.docker.image }}</div>
+                            {% elif env.vm %}
+                              <div class="code">{{ env.vm.base_image_path.split('/')[-1] }}</div>
+                            {% else %}
+                              <span class="muted">—</span>
+                            {% endif %}
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                {% endif %}
+              </details>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </body>
+</html>

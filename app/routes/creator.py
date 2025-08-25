@@ -1,9 +1,11 @@
 import os
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, abort, redirect, url_for
 import docker
 import xml.etree.ElementTree as ET
 import libvirt
+from sqlalchemy.exc import IntegrityError
 
+from app.extensions import db
 from app.models import Cluster, Environment
 from app.services.environment import (
     create_docker_env,
@@ -44,7 +46,17 @@ def make_docker():
         for tag in img.tags:
             image_names.append(tag)
 
-    return render_template("creator/docker.html", images=image_names)
+    existing_environments = (
+        Environment.query.join(Environment.docker)
+        .order_by(Environment.name.asc())
+        .all()
+    )
+
+    return render_template(
+        "creator/docker.html",
+        images=image_names,
+        existing_environments=existing_environments,
+    )
 
 
 @creator_bp.route("/vm", methods=["GET", "POST"])
@@ -84,7 +96,13 @@ def make_vm():
                 images[name] = source.get("file")
                 break
 
-    return render_template("creator/vm.html", images=images)
+    existing_environments = (
+        Environment.query.join(Environment.vm).order_by(Environment.name.asc()).all()
+    )
+
+    return render_template(
+        "creator/vm.html", images=images, existing_environments=existing_environments
+    )
 
 
 @creator_bp.route("/cluster", methods=["GET", "POST"])
@@ -116,3 +134,23 @@ def make_cluster():
         message=message,
         error=error,
     )
+
+
+@creator_bp.route("/creator/delete/<int:env_id>/<string:callback>", methods=["POST"])
+def delete_environment(env_id: int, callback: str):
+    env = Environment.query.get(env_id)
+    if not env:
+        abort(404, description="Environment not found")
+
+    try:
+        db.session.delete(env)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        abort(400, description="Nie udało się usunąć środowiska (błąd spójności).")
+
+    allowed = {"creator.make_docker", "creator.make_vm"}
+    if callback not in allowed:
+        abort(400, description="Forbidden callback")
+
+    return redirect(url_for(callback))
