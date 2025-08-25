@@ -1,0 +1,66 @@
+import os
+from flask import blueprints, request, jsonify
+import docker
+import libvirt
+
+from app.models import Cluster as ClusterModel
+from app.runtime import Cluster, DockerEnvironment
+from app.utils.split_ports import split_ports
+
+api_bp = blueprints.Blueprint("api", __name__, url_prefix="/api")
+
+docker_client = docker.from_env()
+libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
+clusters = {}
+
+
+@api_bp.route("/run/<int:cluster_id>", methods=["POST"])
+def run(cluster_id: int):
+    data = request.json
+    session_id = data["session_id"]
+
+    if not session_id:
+        return jsonify({"error": "session_id is required"}), 400
+
+    cluster_db = ClusterModel.query.filter_by(id=cluster_id).first()
+    environments_db = cluster_db.environments
+
+    cluster = Cluster(name=f"{session_id}-{cluster_db.name}", cluster_id=cluster_db.id)
+
+    for env_db in environments_db:
+        internal_ports, published_ports = split_ports(env_db.ports)
+
+        if env_db.docker:
+            cluster.add_environment(
+                DockerEnvironment(
+                    docker_client=docker_client,
+                    name=f"{session_id}-{env_db.name}",
+                    image=env_db.docker.image,
+                    internal_ports=internal_ports,
+                    published_ports=published_ports,
+                    docker_network=cluster.docker_network,
+                    cluster_id=cluster_id,
+                )
+            )
+        elif env_db.vm:
+            # TODO
+            pass
+
+    clusters[session_id] = cluster
+    cluster.start()
+
+    return jsonify({"status": "started"}), 200
+
+
+@api_bp.route("/stop", methods=["POST"])
+def remove():
+    data = request.json
+    session_id = data["session_id"]
+
+    if not session_id:
+        return jsonify({"error": "session_id is required"}), 400
+
+    cluster = clusters.get(session_id)
+    cluster.destroy()
+
+    return jsonify({"status": "stopped"}), 200

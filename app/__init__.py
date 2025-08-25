@@ -8,6 +8,7 @@ from app.routes.main import main_bp
 from app.routes.creator import creator_bp
 from app.utils.logging import setup_logging
 from .extensions import db
+from .routes.api import api_bp
 
 migrate = Migrate()
 
@@ -50,5 +51,6 @@ def create_app():
 
     app.register_blueprint(main_bp)
     app.register_blueprint(creator_bp)
+    app.register_blueprint(api_bp)
 
     return app

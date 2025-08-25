@@ -23,6 +23,10 @@
       .ports { display:flex; flex-wrap:wrap; gap:0.35rem; }
       .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.9rem; background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:0.35rem 0.5rem; display:inline-block; }
       .hint { font-size:0.9rem; color:var(--muted); margin-top:0.5rem; }
+      .actions { margin-top:1rem; display:flex; gap:0.5rem; }
+      button { cursor:pointer; border:none; border-radius:6px; padding:0.5rem 1rem; font-size:0.9rem; }
+      .start { background:#22c55e; color:white; }
+      .stop { background:#ef4444; color:white; }
     </style>
   </head>
   <body>
@@ -40,6 +44,11 @@
               <h2>{{ cluster.name }}</h2>
               <div class="muted">
                 ID: <span class="code">{{ cluster.id }}</span>
+              </div>
+
+              <div class="actions">
+                <button class="start" onclick="startCluster({{ cluster.id }})">Start</button>
+                <button class="stop" onclick="stopCluster()">Stop</button>
               </div>
             </div>
             <div>
@@ -107,5 +116,27 @@
         </div>
       {% endfor %}
     {% endif %}
+
+    <script>
+      async function startCluster(clusterId) {
+        const res = await fetch(`/api/run/${clusterId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: "0" })
+        });
+        const data = await res.json();
+        alert("Start: " + JSON.stringify(data));
+      }
+
+      async function stopCluster() {
+        const res = await fetch(`/api/stop`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: "0" })
+        });
+        const data = await res.json();
+        alert("Stop: " + JSON.stringify(data));
+      }
+    </script>
   </body>
 </html>
