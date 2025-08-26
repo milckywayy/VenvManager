@@ -1,124 +1,253 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Create Environment</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        form { max-width: 600px; }
-        label { display: block; margin-top: 10px; font-weight: bold; }
-        input, select { width: 100%; padding: 8px; margin-top: 5px; }
-        .ports { margin-top: 10px; border: 1px solid #ccc; padding: 10px; }
-        .port-row { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
-        .port-row input { width: 40%; }
-        .remove-btn { background-color: #e74c3c; color: #fff; border: none; padding: 6px 10px; cursor: pointer; }
-        .remove-btn:hover { background-color: #c0392b; }
-        .add-btn { margin-top: 10px; }
-        button[type="submit"] { margin-top: 15px; padding: 10px 15px; }
-        table {width: 100%;border-collapse: collapse;margin-top: 15px;}
-        table th, table td {border: 1px solid #ccc;padding: 8px 12px;text-align: left;}
-        table th {background-color: #f5f5f5;}
-        table tbody tr:nth-child(even) {background-color: #fafafa;}
-        .ports-list {list-style: none;margin: 0;padding: 0;}
-        .ports-list li {background: #eef6ff;border: 1px solid #cce0ff;border-radius: 4px;padding: 4px 8px;margin: 2px 0;font-family: monospace;display: inline-block;}
-    </style>
-    <script>
-        function addPortRow() {
-            const container = document.getElementById('ports-container');
-            const row = document.createElement('div');
-            row.className = 'port-row';
-            row.innerHTML = `
-                <input type="number" name="ports[][internal]" placeholder="Internal port" min="1" max="65535" required>
-                <input type="number" name="ports[][published]" placeholder="Published port" min="1" max="65535" required>
-                <button type="button" class="remove-btn" onclick="removePortRow(this)">Remove</button>
-            `;
-            container.appendChild(row);
-        }
+{% extends "base.html" %}
 
-        function removePortRow(button) {
-            const row = button.parentNode;
-            row.remove();
-        }
+{% block head_extra %}
 
-        document.addEventListener('DOMContentLoaded', () => {
-            addPortRow();
-        });
-    </script>
-</head>
-<body>
-    <h1>Create a new environment</h1>
+<style>
+    :root {
+        --fg:#e5e7eb;
+        --muted:#9ca3af;
+        --border:#374151;
+        --bg:#111827;
+        --card-bg:#1e293b;
+        --input-bg:#0f172a;
+        --table-header:#1f2937;
+        --table-row:#111827;
+        --table-row-alt:#1f2937;
+        --ports-bg:#1e40af;
+        --ports-border:#2563eb;
+        --danger:#dc2626;
+        --danger-hover:#b91c1c;
+        --btn-bg:#2563eb;
+    }
 
-    <form method="POST" action="{{ url_for('creator.make_vm') }}">
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: var(--bg);
+        color: var(--fg);
+    }
 
-        <label for="name">Environment name</label>
-        <input type="text" id="name" name="name" required>
+    form { max-width: 600px; }
 
-        <label for="base_image_path">Libvirt image</label>
-        {% if images and images|length > 0 %}
-          <select id="base_image_path" name="base_image_path" required>
-            <option value="" disabled selected>-- Select an image --</option>
-            {% for name, path in images.items() %}
-              <option value="{{ path|e }}">{{ name|e }}</option>
-            {% endfor %}
-          </select>
-        {% else %}
-          <div class="warning">
-            No images were found.
-          </div>
-        {% endif %}
+    label {
+        display: block;
+        margin-top: 10px;
+        font-weight: bold;
+    }
 
-        <label for="template">Template</label>
-        <textarea id="template" name="template" rows="10" cols="50"
-          style="font-family: monospace; white-space: pre;"></textarea><br>
+    input, select, textarea {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        background: var(--input-bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--fg);
+    }
 
-        <div class="ports">
-            <label>Ports</label>
-            <div id="ports-container"></div>
-            <button type="button" class="add-btn" onclick="addPortRow()">Add port</button>
-        </div>
+    textarea {
+        font-family: monospace;
+        white-space: pre;
+    }
 
-        <label for="access_info">Access Info</label>
-        <input type="text" id="access_info" name="access_info" required>
+    .ports {
+        margin-top: 10px;
+        border: 1px solid var(--border);
+        padding: 10px;
+        background: var(--card-bg);
+        border-radius: 6px;
+    }
 
-        <button type="submit">Create environment</button>
-    </form>
+    .port-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-top: 5px;
+    }
 
-    {% if existing_environments and existing_environments|length > 0 %}
-        <h2>Existing Docker environments</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Image</th>
-                    <th>Ports</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for env in existing_environments %}
-                <tr>
-                    <td>{{ env.name }}</td>
-                    <td>{{ env.vm.base_image_path.split('/')[-1] }}</td>
-                    <td>
-                        {% if env.ports %}
-                            <ul class="ports-list">
-                                {% for p in env.ports %}
-                                    <li>{{ p.internal }} → {{ p.published }}</li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            —
-                        {% endif %}
-                    </td>
-                    <td>
-                        <form method="POST" action="{{ url_for('creator.delete_env', env_id=env.id, callback='creator.make_vm') }}" onsubmit="return confirm('Usunąć środowisko {{ env.name }}?');">
-                          <button type="submit" class="remove-btn">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    .port-row input { width: 40%; }
+
+    .remove-btn {
+        background-color: var(--danger);
+        color: #fff;
+        border: none;
+        padding: 6px 10px;
+        cursor: pointer;
+        border-radius: 4px;
+    }
+
+    .remove-btn:hover {
+        background-color: var(--danger-hover);
+    }
+
+    .add-btn {
+        margin-top: 10px;
+        padding: 6px 12px;
+        border-radius: 4px;
+        border: none;
+        background: var(--btn-bg);
+        color: white;
+        cursor: pointer;
+    }
+
+    button[type="submit"] {
+        margin-top: 15px;
+        padding: 10px 15px;
+        border-radius: 6px;
+        border: none;
+        background: var(--btn-bg);
+        color: white;
+        cursor: pointer;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        border: 1px solid var(--border);
+    }
+
+    table th, table td {
+        border: 1px solid var(--border);
+        padding: 8px 12px;
+        text-align: left;
+    }
+
+    table th {
+        background-color: var(--table-header);
+        color: var(--fg);
+    }
+
+    table tbody tr:nth-child(odd) { background-color: var(--table-row); }
+    table tbody tr:nth-child(even) { background-color: var(--table-row-alt); }
+
+    .ports-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .ports-list li {
+        background: var(--ports-bg);
+        border: 1px solid var(--ports-border);
+        border-radius: 4px;
+        padding: 4px 8px;
+        margin: 2px 0;
+        font-family: monospace;
+        display: inline-block;
+        color: #dbeafe;
+    }
+
+    .warning {
+        background: #78350f;
+        border: 1px solid #d97706;
+        padding: 10px;
+        margin-top: 10px;
+        border-radius: 6px;
+        color: #fcd34d;
+    }
+</style>
+
+<script>
+    function addPortRow() {
+        const container = document.getElementById('ports-container');
+        const row = document.createElement('div');
+        row.className = 'port-row';
+        row.innerHTML = `
+            <input type="number" name="ports[][internal]" placeholder="Internal port" min="1" max="65535" required>
+            <input type="number" name="ports[][published]" placeholder="Published port" min="1" max="65535" required>
+            <button type="button" class="remove-btn" onclick="removePortRow(this)">Remove</button>
+        `;
+        container.appendChild(row);
+    }
+
+    function removePortRow(button) {
+        const row = button.parentNode;
+        row.remove();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        addPortRow();
+    });
+</script>
+
+{% endblock %}
+
+{% block content %}
+
+<h1>Create a new environment</h1>
+
+<form method="POST" action="{{ url_for('creator.make_vm') }}">
+
+    <label for="name">Environment name</label>
+    <input type="text" id="name" name="name" required>
+
+    <label for="base_image_path">Libvirt image</label>
+    {% if images and images|length > 0 %}
+      <select id="base_image_path" name="base_image_path" required>
+        <option value="" disabled selected>-- Select an image --</option>
+        {% for name, path in images.items() %}
+          <option value="{{ path|e }}">{{ name|e }}</option>
+        {% endfor %}
+      </select>
+    {% else %}
+      <div class="warning">
+        No images were found.
+      </div>
     {% endif %}
-</body>
-</html>
+
+    <label for="template">Template</label>
+    <textarea id="template" name="template" rows="10" cols="50"
+      style="font-family: monospace; white-space: pre;"></textarea><br>
+
+    <div class="ports">
+        <label>Ports</label>
+        <div id="ports-container"></div>
+        <button type="button" class="add-btn" onclick="addPortRow()">Add port</button>
+    </div>
+
+    <label for="access_info">Access Info</label>
+    <input type="text" id="access_info" name="access_info" required>
+
+    <button type="submit">Create environment</button>
+</form>
+
+{% if existing_environments and existing_environments|length > 0 %}
+    <h2>Existing Docker environments</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Image</th>
+                <th>Ports</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for env in existing_environments %}
+            <tr>
+                <td>{{ env.name }}</td>
+                <td>{{ env.vm.base_image_path.split('/')[-1] }}</td>
+                <td>
+                    {% if env.ports %}
+                        <ul class="ports-list">
+                            {% for p in env.ports %}
+                                <li>{{ p.internal }} → {{ p.published }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>
+                    <form method="POST" action="{{ url_for('creator.delete_env', env_id=env.id, callback='creator.make_vm') }}" onsubmit="return confirm('Usunąć środowisko {{ env.name }}?');">
+                      <button type="submit" class="remove-btn">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
+{% endblock %}

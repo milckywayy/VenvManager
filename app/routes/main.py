@@ -9,3 +9,8 @@ main_bp = Blueprint("main", __name__)
 def index():
     clusters = Cluster.query.join(Cluster.environments).all()
     return render_template("index.html", clusters=clusters)
+
+
+@main_bp.route("/base")
+def base():
+    return render_template("base.html")
