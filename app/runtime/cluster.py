@@ -54,7 +54,7 @@ class Cluster:
             env.restart()
 
     def status(self) -> dict:
-        return {env.name: env.status() for env in self.environments}
+        return {env.display_name: env.status() for env in self.environments}
 
     def is_ready(self) -> bool:
         return self._all_env_running()

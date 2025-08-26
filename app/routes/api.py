@@ -68,6 +68,23 @@ def run(cluster_id: int):
     return jsonify({"status": "started", "access_info": cluster.get_access_info()}), 200
 
 
+@api_bp.route("/status", methods=["POST"])
+def status():
+    data = request.json
+    session_id = data["session_id"]
+
+    if not session_id:
+        return jsonify({"error": "session_id is required"}), 400
+
+    cluster = clusters.get(session_id)
+    if not cluster:
+        return jsonify({"error": "Cluster not found"}), 404
+
+    cluster_status = cluster.status()
+
+    return jsonify({"status": cluster_status}), 200
+
+
 @api_bp.route("/restart", methods=["POST"])
 def restart():
     data = request.json
