@@ -38,6 +38,7 @@ def run(cluster_id: int):
                 DockerEnvironment(
                     docker_client=docker_client,
                     name=f"{session_id}-{env_db.name}",
+                    display_name=env_db.name,
                     image=env_db.docker.image,
                     internal_ports=internal_ports,
                     published_ports=published_ports,
@@ -50,6 +51,7 @@ def run(cluster_id: int):
                 VMEnvironment(
                     libvirt_client=libvirt_client,
                     name=f"{session_id}-{env_db.name}",
+                    display_name=env_db.name,
                     template=env_db.vm.template,
                     base_image_name=env_db.vm.base_image_path.split("/")[-1],
                     internal_ports=internal_ports,
@@ -61,7 +63,7 @@ def run(cluster_id: int):
     clusters[session_id] = cluster
     cluster.start()
 
-    return jsonify({"status": "started"}), 200
+    return jsonify({"status": "started", "access_info": cluster.get_access_info()}), 200
 
 
 @api_bp.route("/restart", methods=["POST"])

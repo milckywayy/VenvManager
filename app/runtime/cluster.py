@@ -60,7 +60,7 @@ class Cluster:
         return self._all_env_running()
 
     def get_access_info(self) -> dict:
-        return {env.name: env.get_access_info() for env in self.environments}
+        return {env.display_name: env.get_access_info() for env in self.environments}
 
     def destroy(self):
         for env in self.environments:

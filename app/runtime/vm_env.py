@@ -29,13 +29,14 @@ class VMEnvironment(Environment):
         self,
         libvirt_client: libvirt.virConnect,
         name: str,
+        display_name: str,
         template: str,
         base_image_name: str,
         internal_ports: list,
         published_ports: list,
         network_name: str,
     ):
-        super().__init__(name, internal_ports, published_ports)
+        super().__init__(name, display_name, internal_ports, published_ports)
         self.libvirt_client = libvirt_client
         self.template = template
         self.base_image_path = os.path.join(
