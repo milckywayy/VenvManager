@@ -49,6 +49,10 @@ class Cluster:
         for env in self.environments:
             env.start()
 
+    def restart(self):
+        for env in self.environments:
+            env.restart()
+
     def status(self) -> dict:
         return {env.name: env.status() for env in self.environments}
 

@@ -27,6 +27,8 @@
       button { cursor:pointer; border:none; border-radius:6px; padding:0.5rem 1rem; font-size:0.9rem; }
       .start { background:#22c55e; color:white; }
       .stop { background:#ef4444; color:white; }
+      .restart { background:#f59e0b; color:white; }
+      .delete { background: red; color:white; }
     </style>
   </head>
   <body>
@@ -48,6 +50,7 @@
                 <div class="actions">
                   <button class="start" onclick="startCluster({{ cluster.id }})">Start</button>
                   <button class="stop" onclick="stopCluster()">Stop</button>
+                  <button class="restart" onclick="restartCluster()">Restart</button>
 
                   <form
                     method="post"
@@ -134,6 +137,16 @@
         });
         const data = await res.json();
         alert("Start: " + JSON.stringify(data));
+      }
+
+      async function restartCluster() {
+        const res = await fetch(`/api/restart`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: "0" })
+        });
+        const data = await res.json();
+        alert("Restart: " + JSON.stringify(data));
       }
 
       async function stopCluster() {

@@ -23,6 +23,9 @@ def run(cluster_id: int):
         return jsonify({"error": "session_id is required"}), 400
 
     cluster_db = ClusterModel.query.filter_by(id=cluster_id).first()
+    if not cluster_db:
+        return jsonify({"error": "Cluster not found"}), 404
+
     environments_db = cluster_db.environments
 
     cluster = Cluster(name=f"{session_id}-{cluster_db.name}", cluster_id=cluster_db.id)
@@ -61,6 +64,23 @@ def run(cluster_id: int):
     return jsonify({"status": "started"}), 200
 
 
+@api_bp.route("/restart", methods=["POST"])
+def restart():
+    data = request.json
+    session_id = data["session_id"]
+
+    if not session_id:
+        return jsonify({"error": "session_id is required"}), 400
+
+    cluster = clusters.get(session_id)
+    if not cluster:
+        return jsonify({"error": "Cluster not found"}), 404
+
+    cluster.restart()
+
+    return jsonify({"status": "stopped"}), 200
+
+
 @api_bp.route("/stop", methods=["POST"])
 def remove():
     data = request.json
@@ -70,6 +90,9 @@ def remove():
         return jsonify({"error": "session_id is required"}), 400
 
     cluster = clusters.get(session_id)
+    if not cluster:
+        return jsonify({"error": "Cluster not found"}), 404
+
     cluster.destroy()
 
     return jsonify({"status": "stopped"}), 200
