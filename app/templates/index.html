@@ -45,11 +45,19 @@
               <div class="muted">
                 ID: <span class="code">{{ cluster.id }}</span>
               </div>
+                <div class="actions">
+                  <button class="start" onclick="startCluster({{ cluster.id }})">Start</button>
+                  <button class="stop" onclick="stopCluster()">Stop</button>
 
-              <div class="actions">
-                <button class="start" onclick="startCluster({{ cluster.id }})">Start</button>
-                <button class="stop" onclick="stopCluster()">Stop</button>
-              </div>
+                  <form
+                    method="post"
+                    action="{{ url_for('creator.delete_cluster', cluster_id=cluster.id, callback='main.index') }}"
+                    onsubmit="return confirm('Na pewno usunąć klaster „{{ cluster.name }}”? Tej operacji nie można cofnąć.');"
+                    style="display:inline"
+                  >
+                    <button type="submit" class="delete">Usuń</button>
+                  </form>
+                </div>
             </div>
             <div>
               <details {% if cluster.environments %}open{% endif %}>

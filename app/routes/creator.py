@@ -136,8 +136,10 @@ def make_cluster():
     )
 
 
-@creator_bp.route("/creator/delete/<int:env_id>/<string:callback>", methods=["POST"])
-def delete_environment(env_id: int, callback: str):
+@creator_bp.route(
+    "/creator/delete_env/<int:env_id>/<string:callback>", methods=["POST"]
+)
+def delete_env(env_id: int, callback: str):
     env = Environment.query.get(env_id)
     if not env:
         abort(404, description="Environment not found")
@@ -147,9 +149,31 @@ def delete_environment(env_id: int, callback: str):
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
-        abort(400, description="Nie udało się usunąć środowiska (błąd spójności).")
+        abort(400, description="Failed to delete environment (integrity error).")
 
-    allowed = {"creator.make_docker", "creator.make_vm"}
+    allowed = {"main.index", "creator.make_docker", "creator.make_vm"}
+    if callback not in allowed:
+        abort(400, description="Forbidden callback")
+
+    return redirect(url_for(callback))
+
+
+@creator_bp.route(
+    "/creator/delete_cluster/<int:cluster_id>/<string:callback>", methods=["POST"]
+)
+def delete_cluster(cluster_id: int, callback: str):
+    cluster = Cluster.query.get(cluster_id)
+    if not cluster:
+        abort(404, description="Cluster not found")
+
+    try:
+        db.session.delete(cluster)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        abort(400, description="Failed to delete cluster (integrity error).")
+
+    allowed = {"main.index", "creator.make_cluster"}
     if callback not in allowed:
         abort(400, description="Forbidden callback")
 

@@ -108,7 +108,7 @@
                         {% endif %}
                     </td>
                     <td>
-                        <form method="POST" action="{{ url_for('creator.delete_environment', env_id=env.id, callback='creator.make_vm') }}" onsubmit="return confirm('Usunąć środowisko {{ env.name }}?');">
+                        <form method="POST" action="{{ url_for('creator.delete_env', env_id=env.id, callback='creator.make_vm') }}" onsubmit="return confirm('Usunąć środowisko {{ env.name }}?');">
                           <button type="submit" class="remove-btn">Delete</button>
                         </form>
                     </td>
