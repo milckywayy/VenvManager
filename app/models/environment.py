@@ -32,6 +32,7 @@ class Environment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False, index=True)
     ports = db.Column(db.JSON, nullable=True, default=list)
+    access_info = db.Column(db.String(256), nullable=True, default=list)
 
     cluster_links = db.relationship(
         "ClusterEnvironment",

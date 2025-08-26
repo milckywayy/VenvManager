@@ -42,6 +42,7 @@ def run(cluster_id: int):
                     image=env_db.docker.image,
                     internal_ports=internal_ports,
                     published_ports=published_ports,
+                    access_info=env_db.access_info,
                     docker_network=cluster.docker_network,
                     cluster_id=cluster_id,
                 )
@@ -56,6 +57,7 @@ def run(cluster_id: int):
                     base_image_name=env_db.vm.base_image_path.split("/")[-1],
                     internal_ports=internal_ports,
                     published_ports=published_ports,
+                    access_info=env_db.access_info,
                     network_name=cluster.network_name,
                 )
             )

@@ -26,6 +26,7 @@ def make_docker():
         docker_image = request.form.get("docker_image")
         internal_ports = request.form.getlist("ports[][internal]")
         published_ports = request.form.getlist("ports[][published]")
+        access_info = request.form.get("access_info")
 
         port_mappings = []
         for internal, published in zip(internal_ports, published_ports):
@@ -38,6 +39,7 @@ def make_docker():
             name=name,
             image=docker_image,
             ports=port_mappings,
+            access_info=access_info,
         )
 
     images = docker_client.images.list()
@@ -67,6 +69,7 @@ def make_vm():
         template = request.form.get("template")
         internal_ports = request.form.getlist("ports[][internal]")
         published_ports = request.form.getlist("ports[][published]")
+        access_info = request.form.get("access_info")
 
         port_mappings = []
         for internal, published in zip(internal_ports, published_ports):
@@ -80,6 +83,7 @@ def make_vm():
             template=template,
             base_image_path=base_image_path,
             ports=port_mappings,
+            access_info=access_info,
         )
 
     images = {}

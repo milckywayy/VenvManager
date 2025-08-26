@@ -53,12 +53,6 @@
         <label for="name">Environment name</label>
         <input type="text" id="name" name="name" required>
 
-        <div class="ports">
-            <label>Ports</label>
-            <div id="ports-container"></div>
-            <button type="button" class="add-btn" onclick="addPortRow()">Add port</button>
-        </div>
-
         <label for="docker_image">Docker image</label>
         {% if images and images|length > 0 %}
             <select id="docker_image" name="docker_image" required>
@@ -73,6 +67,15 @@
                 then reload this page.
             </div>
         {% endif %}
+
+        <div class="ports">
+            <label>Ports</label>
+            <div id="ports-container"></div>
+            <button type="button" class="add-btn" onclick="addPortRow()">Add port</button>
+        </div>
+
+        <label for="access_info">Access Info</label>
+        <input type="text" id="access_info" name="access_info" required>
 
         <button type="submit">Create environment</button>
     </form>
@@ -103,7 +106,7 @@
                         {% else %}
                             —
                         {% endif %}
-                    </td>s
+                    </td>
                     <td>
                         <form method="POST" action="{{ url_for('creator.delete_env', env_id=env.id, callback='creator.make_docker') }}" onsubmit="return confirm('Usunąć środowisko {{ env.name }}?');">
                           <button type="submit" class="remove-btn">Delete</button>

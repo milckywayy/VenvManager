@@ -34,9 +34,12 @@ class VMEnvironment(Environment):
         base_image_name: str,
         internal_ports: list,
         published_ports: list,
+        access_info: list,
         network_name: str,
     ):
-        super().__init__(name, display_name, internal_ports, published_ports)
+        super().__init__(
+            name, display_name, internal_ports, published_ports, access_info
+        )
         self.libvirt_client = libvirt_client
         self.template = template
         self.base_image_path = os.path.join(
@@ -189,11 +192,6 @@ class VMEnvironment(Environment):
 
         logging.debug(f"Checking vm {self.name} status: {state}")
         return state_mapping.get(state, EnvStatus.UNKNOWN)
-
-    def get_access_info(self) -> dict:
-        return {
-            "ip": self._get_ip() if self._get_ip() else None,
-        }
 
     def destroy(self):
         if not self.domain:

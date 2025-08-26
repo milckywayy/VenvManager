@@ -29,10 +29,13 @@ class DockerEnvironment(Environment):
         image: str,
         internal_ports: list,
         published_ports: list,
+        access_info: str,
         docker_network: Network,
         cluster_id: int,
     ):
-        super().__init__(name, display_name, internal_ports, published_ports)
+        super().__init__(
+            name, display_name, internal_ports, published_ports, access_info
+        )
         self.docker_client = docker_client
         self.image = image
         self.docker_network = docker_network
@@ -106,16 +109,6 @@ class DockerEnvironment(Environment):
             if docker_status in EnvStatus._value2member_map_
             else EnvStatus.UNKNOWN
         )
-
-    def get_access_info(self) -> dict:
-        if self.container is None:
-            logging.warning(
-                f"Tried to stop {self.name}, but environment was not started"
-            )
-            raise DockerEnvException(f"Docker environment {self.name} was not started")
-
-        logging.debug(f"Getting docker access info {self.name}")
-        return {}
 
     def destroy(self):
         if self.container is None:

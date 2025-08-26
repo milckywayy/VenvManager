@@ -5,7 +5,12 @@ from app.models.status import EnvStatus
 
 class Environment(ABC):
     def __init__(
-        self, name: str, display_name: str, internal_ports: list, published_ports: list
+        self,
+        name: str,
+        display_name: str,
+        internal_ports: list,
+        published_ports: list,
+        access_info: str,
     ):
         self.name = name
         self.display_name = display_name
@@ -15,6 +20,8 @@ class Environment(ABC):
 
         self.internal_ports = internal_ports
         self.published_ports = published_ports
+
+        self.access_info = access_info
 
     @abstractmethod
     def start(self):
@@ -28,9 +35,11 @@ class Environment(ABC):
     def status(self) -> EnvStatus:
         pass
 
-    @abstractmethod
     def get_access_info(self):
-        pass
+        result = self.access_info
+        for internal, published in zip(self.internal_ports, self.published_ports):
+            result = result.replace(f"{{{{{internal}}}}}", str(published))
+        return result
 
     @abstractmethod
     def destroy(self):
