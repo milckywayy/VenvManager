@@ -4,7 +4,7 @@ import docker
 import libvirt
 
 from app.models import Cluster as ClusterModel
-from app.runtime import Cluster, DockerEnvironment
+from app.runtime import Cluster, DockerEnvironment, VMEnvironment
 from app.utils.split_ports import split_ports
 
 api_bp = blueprints.Blueprint("api", __name__, url_prefix="/api")
@@ -43,8 +43,17 @@ def run(cluster_id: int):
                 )
             )
         elif env_db.vm:
-            # TODO
-            pass
+            cluster.add_environment(
+                VMEnvironment(
+                    libvirt_client=libvirt_client,
+                    name=f"{session_id}-{env_db.name}",
+                    template=env_db.vm.template,
+                    base_image_name=env_db.vm.base_image_path.split("/")[-1],
+                    internal_ports=internal_ports,
+                    published_ports=published_ports,
+                    network_name=cluster.network_name,
+                )
+            )
 
     clusters[session_id] = cluster
     cluster.start()

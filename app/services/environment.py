@@ -33,7 +33,7 @@ def create_cluster_with_envs(name: str, environment_ids: list[int]) -> Cluster:
 
 
 def create_docker_env(name: str, image: str, ports: list[dict]) -> Environment:
-    env = Environment(name=name, ports=ports)
+    env = Environment(name=name.replace(" ", "-"), ports=ports)
     env.docker = DockerEnvironment(image=image)
     db.session.add(env)
     db.session.commit()
@@ -43,7 +43,7 @@ def create_docker_env(name: str, image: str, ports: list[dict]) -> Environment:
 def create_vm_env(
     name: str, template: str, base_image_path: str, ports: list[dict]
 ) -> Environment:
-    env = Environment(name=name, ports=ports)
+    env = Environment(name=name.replace(" ", "-"), ports=ports)
     env.vm = VMEnvironment(template=template, base_image_path=base_image_path)
     db.session.add(env)
     db.session.commit()
