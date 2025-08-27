@@ -20,9 +20,10 @@ libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
 
 
 class Cluster:
-    def __init__(self, name: str, cluster_id: int):
+    def __init__(self, name: str, cluster_id: int, cluster_db_id: int = None):
         self.name = name
         self.id = cluster_id
+        self.db_id = cluster_db_id
         self.environments = []
 
         self.network_name = f"venvbr{self.id}"

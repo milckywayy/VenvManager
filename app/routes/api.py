@@ -36,7 +36,9 @@ def run(cluster_id: int):
     environments_db = cluster_db.environments
 
     cluster = Cluster(
-        name=f"{session_id}-{cluster_db.name}", cluster_id=int(session_id)
+        name=f"{session_id}-{cluster_db.name}",
+        cluster_id=int(session_id),
+        cluster_db_id=cluster_db.id,
     )
 
     for env_db in environments_db:
@@ -94,9 +96,13 @@ def status():
     if not cluster:
         return jsonify({"error": "Cluster not found"}), 404
 
-    cluster_status = cluster.status()
+    env_statuses = cluster.status()  # noqa: F841
 
-    return jsonify({"status": cluster_status}), 200
+    return jsonify(
+        {
+            "cluster_id": str(cluster.db_id),
+        }
+    ), 200
 
 
 @api_bp.route("/restart", methods=["POST"])
@@ -109,7 +115,7 @@ def restart():
 
     cluster = clusters.get(session_id)
     if not cluster:
-        return jsonify({"error": "Cluster not found"}), 404
+        return jsonify({"error": "Cluster is not running"}), 404
 
     cluster.restart()
 
@@ -125,8 +131,9 @@ def remove():
         return jsonify({"error": "session_id is required"}), 400
 
     cluster = clusters.get(session_id)
+    print(cluster)
     if not cluster:
-        return jsonify({"error": "Cluster not found"}), 404
+        return jsonify({"error": "Cluster is not running"}), 404
 
     for env in cluster.environments:
         published_ports = []
@@ -136,5 +143,6 @@ def remove():
                 published_ports.remove(port)
 
     cluster.destroy()
+    del clusters[session_id]
 
     return jsonify({"status": "stopped"}), 200

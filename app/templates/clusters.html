@@ -1,81 +1,184 @@
 {% extends "base.html" %}
 
-{% block title %}Klastry{% endblock %}
+{% block title %}Clusters{% endblock %}
 
 {% block head_extra %}
+<style>
+  button[data-loading] { position: relative; pointer-events: none; }
+  button[data-loading] .btn-label { visibility: hidden; }
+  button[data-loading]::after {
+    content: ""; position: absolute; inset: 0;
+    margin: auto; width: 1rem; height: 1rem; border-radius: 9999px;
+    border: 2px solid currentColor; border-right-color: transparent;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg) } }
+
+  tr[data-busy="1"], tr[data-busy="1"] + tr[data-open] {
+    opacity: .6;
+  }
+</style>
+
+
 <script>
-  // --- Helpers / DOM utils ---
   function qs(sel, ctx=document){ return ctx.querySelector(sel) }
   function qsa(sel, ctx=document){ return Array.from(ctx.querySelectorAll(sel)) }
   function getRows(){ return qsa('[data-cluster-row]') }
   function valueOrEmpty(v){ return (v || '').toString().toLowerCase() }
+  function btnsIn(row){ return qsa('td:last-child button', row) }
+  function labelOf(btn){ return btn.textContent.trim().toLowerCase() }
 
-  // --- API wrapper with button state ---
+  let runningClusterId = null;
+
+  function setRowBusy(row, busy){
+    if(!row) return;
+    row.dataset.busy = busy ? '1' : '0';
+
+    qsa('button', row).forEach(b => b.disabled = busy || b.dataset.loading === '1');
+    const det = qs(`#${row.dataset.detailsId}`);
+    if(det){ qsa('button', det).forEach(b => b.disabled = busy) }
+  }
+
+  function updateRunningUI(){
+    getRows().forEach(row => {
+      const isThisRunning = runningClusterId && row.dataset.id === runningClusterId;
+      row.dataset.status = isThisRunning ? 'started' : 'stopped';
+
+      btnsIn(row).forEach(btn => {
+        const lbl = labelOf(btn);
+        if (isThisRunning){
+          if (lbl === 'start' || lbl === 'delete') btn.disabled = true;
+          if (lbl === 'stop' || lbl === 'restart') btn.disabled = false;
+        } else {
+          if (runningClusterId){
+            if (lbl === 'start' || lbl === 'stop' || lbl === 'restart') btn.disabled = true;
+            if (lbl === 'delete') btn.disabled = true;
+          } else {
+            if (lbl === 'start' || lbl === 'delete') btn.disabled = false;
+            if (lbl === 'stop' || lbl === 'restart') btn.disabled = true;
+          }
+        }
+      });
+    });
+  }
+
   async function callApi(url, opts, btn){
+    const row = btn?.closest?.('[data-cluster-row]') || null;
     try {
-      if (btn){ btn.disabled = true; btn.dataset.loading = '1'; }
+      if (btn){ btn.disabled = true; btn.dataset.loading = '1' }
+      if (row) setRowBusy(row, true);
+
       const res = await fetch(url, opts);
       const data = await res.json().catch(()=>({}));
-      if (!res.ok) throw new Error(data?.error || res.statusText);
+      if (!res.ok) throw new Error(data?.error || res.statusText || 'Request failed');
       return data;
     } finally {
-      if (btn){ delete btn.dataset.loading; btn.disabled = false; }
+      if (btn){ delete btn.dataset.loading; btn.disabled = false }
+      if (row) setRowBusy(row, false);
+      updateRunningUI();
     }
   }
 
-  // --- Cluster actions ---
+  function lockAllButtonsExcept(row) {
+    getRows().forEach(r => {
+      qsa('button', r).forEach(b => b.disabled = true);
+      const det = qs(`#${r.dataset.detailsId}`);
+      if (det) qsa('button', det).forEach(b => b.disabled = true);
+    });
+    qsa('button', row).forEach(b => b.disabled = false);
+    const det = qs(`#${row.dataset.detailsId}`);
+    if (det) qsa('button', det).forEach(b => b.disabled = false);
+  }
+
   async function startCluster(clusterId, btn){
-    const data = await callApi(`/api/run/${clusterId}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: '65535' })
-    }, btn);
-    alert(JSON.stringify(data));
+    const row = btn.closest('[data-cluster-row]');
+    try {
+      lockAllButtonsExcept(row);
+      row.dataset.status = 'started';
+      runningClusterId = String(clusterId);
+      updateRunningUI();
+
+      const data = await callApi(
+        `/api/run/${clusterId}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: '65535' })
+        },
+        btn
+      );
+      alert(JSON.stringify(data));
+    } catch (err){
+      row.dataset.status = 'stopped';
+      runningClusterId = null;
+      updateRunningUI();
+      alert(`Start failed: ${err.message}`);
+    }
   }
 
   async function restartCluster(btn){
-    if (!confirm('Zrestartować klaster? Trwające sesje mogą zostać przerwane.')) return;
-    await callApi(`/api/restart`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: '65535' })
-    }, btn);
-    alert('Cluster restarted.');
+    if (!confirm('Restart cluster?')) return;
+    try {
+      await callApi(
+        `/api/restart`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: '65535' })
+        },
+        btn
+      );
+    } catch (err){
+      alert(`Restart failed: ${err.message}`);
+    }
   }
 
   async function stopCluster(btn){
-    if (!confirm('Zatrzymać klaster?')) return;
-    await callApi(`/api/stop`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: '65535' })
-    }, btn);
-    alert('Cluster stopped.');
+    if (!confirm('Stop cluster?')) return;
+    const row = btn.closest('[data-cluster-row]');
+    try {
+      await callApi(
+        `/api/stop`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: '65535' })
+        },
+        btn
+      );
+      runningClusterId = null;
+      getRows().forEach(r => r.dataset.status = 'stopped');
+      updateRunningUI();
+    } catch (err){
+      alert(`Stop failed: ${err.message}`);
+    }
   }
 
-  // --- Filter & sort ---
   function filterClusters(){
     const q = valueOrEmpty(qs('#cluster-search')?.value).trim();
     getRows().forEach(r => {
       const text = valueOrEmpty(r.dataset.search);
       const matchText = !q || text.includes(q);
       r.style.display = matchText ? '' : 'none';
-      // also toggle its details row
       const det = qs(`#${r.dataset.detailsId}`);
-      if(det){ det.style.display = matchText && det.dataset.open==='1' ? '' : 'none'; }
+      if(det){ det.style.display = matchText && det.dataset.open==='1' ? '' : 'none' }
     });
   }
 
   function sortClusters(by){
-    const tbody = qs('#cluster-tbody'); if(!tbody) return;
+    const tbody = qs('#cluster-tbody');
+    if(!tbody) return;
     const rows = getRows();
     const dirEl = qs(`#sort-${by}`);
     const dir = (dirEl?.dataset.dir === 'asc') ? 'desc' : 'asc';
-    if(dirEl){ dirEl.dataset.dir = dir; }
-
+    if(dirEl){ dirEl.dataset.dir = dir }
     rows.sort((a,b) => {
       const av = (a.dataset[by] || '').toLowerCase();
       const bv = (b.dataset[by] || '').toLowerCase();
       if(av < bv) return dir==='asc' ? -1 : 1;
-      if(av > bv) return dir==='asc' ?  1 : -1;
+      if(av > bv) return dir==='asc' ? 1 : -1;
       return 0;
     });
-
-    // move primary rows and keep each details row directly after its primary row
     rows.forEach(r => {
       const det = qs(`#${r.dataset.detailsId}`);
       tbody.appendChild(r);
@@ -83,21 +186,68 @@
     });
   }
 
-  // --- Expand/collapse per cluster ---
   function toggleDetails(btn){
-    const row = btn.closest('[data-cluster-row]'); if(!row) return;
-    const det = qs(`#${row.dataset.detailsId}`); if(!det) return;
+    const row = btn.closest('[data-cluster-row]');
+    if(!row) return;
+    const det = qs(`#${row.dataset.detailsId}`);
+    if(!det) return;
     const open = det.dataset.open === '1';
     det.dataset.open = open ? '0' : '1';
     det.style.display = open ? 'none' : '';
     btn.setAttribute('aria-expanded', open ? 'false' : 'true');
   }
 
+  async function detectRunningCluster(){
+    const STATUS_URL = '/api/status';
+    try {
+      const res = await fetch(STATUS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: '65535' })
+      });
+
+      if (res.ok) {
+        const data = await res.json().catch(()=>({}));
+        const id = String(data?.cluster_id ?? '').trim();
+        console.log(id);
+
+        if (id) {
+          runningClusterId = id;
+          getRows().forEach(r => {
+            r.dataset.status = (r.dataset.id === id) ? 'started' : 'stopped';
+          });
+        } else {
+          runningClusterId = null;
+          getRows().forEach(r => r.dataset.status = 'stopped');
+        }
+      } else {
+        runningClusterId = null;
+        getRows().forEach(r => r.dataset.status = 'stopped');
+      }
+    } catch (e){
+      runningClusterId = null;
+      getRows().forEach(r => r.dataset.status = 'stopped');
+      console.warn('Detect running cluster failed:', e);
+    } finally {
+      updateRunningUI();
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
-    const search = qs('#cluster-search'); if(search){ search.addEventListener('input', filterClusters) }
+    const search = qs('#cluster-search');
+    if(search){ search.addEventListener('input', filterClusters) }
     filterClusters();
-  })
+    detectRunningCluster();
+  });
+
+  window.startCluster = startCluster;
+  window.stopCluster = stopCluster;
+  window.restartCluster = restartCluster;
+  window.sortClusters = sortClusters;
+  window.toggleDetails = toggleDetails;
 </script>
+
+
 {% endblock %}
 
 {% block content %}
@@ -152,6 +302,7 @@
               <tr data-cluster-row
                   data-id="{{ cluster.id }}"
                   data-name="{{ cluster.name }}"
+                  data-status="{{ cluster.status|lower }}"
                   data-details-id="{{ details_id }}"
                   data-search="{{ (cluster.name ~ ' ' ~ cluster.id ~ ' ' ~ envs_txt ~ ' ' ~ images_txt ~ ' ' ~ ports_txt) | lower }}"
                   class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -171,33 +322,33 @@
                 <td class="px-4 py-3">
                   <div class="flex justify-end gap-2">
                       <button
-                        onclick="startCluster({{ cluster.id }}, this)"
+                        onclick="startCluster({{ cluster.id|tojson }}, this)"
                         class="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-2 py-2 text-xs font-medium text-white ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 btn-label" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                           <path d="M8 5v14l11-7-11-7z"/>
                         </svg>
-                        Start
+                        <span class="btn-label">Start</span>
                       </button>
 
                       <button
                         onclick="stopCluster(this)"
                         class="inline-flex items-center gap-1.5 rounded-md bg-slate-200 px-2 py-2 text-xs font-medium text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 disabled:opacity-60 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-700"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 btn-label" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                           <path d="M6 6h12v12H6z"/>
                         </svg>
-                        Stop
+                        <span class="btn-label">Stop</span>
                       </button>
 
                       <button
                         onclick="restartCluster(this)"
                         class="inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-2 py-2 text-xs font-medium text-white ring-1 ring-inset ring-amber-400/60 hover:bg-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 btn-label" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                           <path d="M12 6V3l4 4-4 4V8a4 4 0 104 4h2a6 6 0 11-6-6z"/>
                         </svg>
-                        Restart
+                        <span class="btn-label">Restart</span>
                       </button>
 
                       <form method="post" action="{{ url_for('creator.delete_cluster', cluster_id=cluster.id, callback='main.index') }}"
@@ -206,10 +357,10 @@
                           type="submit"
                           class="inline-flex items-center gap-1.5 rounded-md bg-rose-600 px-2 py-2 text-xs font-medium text-white ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M9 3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1h5v2H4V4h5V3zm-3 5h12l-1 12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6"/>
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 btn-label" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M9 3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1h5v2H4V4h5V3zm-3 5h12l-1 12a2 2 0 0 1-2 2H9a2 2 0 0 1 -2 -2"/>
                           </svg>
-                          Delete
+                          <span class="btn-label">Delete</span>
                         </button>
                       </form>
                     </div>
