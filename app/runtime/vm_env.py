@@ -3,9 +3,7 @@ import subprocess
 import threading
 import time
 import uuid
-from time import sleep
 
-from app import load_env
 from app.utils.networking import forward_port
 import xml.etree.ElementTree as ET
 from app.utils.vm_overlay import create_overlay, remove_overlay
@@ -207,104 +205,3 @@ class VMEnvironment(Environment):
         self.domain.undefine()
         remove_overlay(self.image_path)
         logging.info(f"Removed vm environment {self.name}")
-
-
-def test_ubuntu():
-    cluster_id = 0
-
-    from app.utils.networking import create_network, remove_network
-    import libvirt
-
-    libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
-
-    network_name = "venvbr0"
-    create_network(network_name, cluster_id)
-
-    template = ""
-    with open(
-        "/home/milckywayy/PycharmProjects/VenvManager/temp/vm_template.xml", "r"
-    ) as f:
-        template = f.read()
-
-    vm1 = VMEnvironment(
-        libvirt_client,
-        name="ctf-vm01",
-        template=template,
-        base_image_name="/var/lib/libvirt/images/ubuntu18.04.qcow2",
-        internal_ports=[22],
-        published_ports=[10022],
-        network_name=network_name,
-    )
-
-    vm2 = VMEnvironment(
-        libvirt_client,
-        name="ctf-vm02",
-        template=template,
-        base_image_name="/var/lib/libvirt/images/ubuntu18.04.qcow2",
-        internal_ports=[22],
-        published_ports=[10023],
-        network_name=network_name,
-    )
-
-    vm1.start()
-    vm2.start()
-
-    print("Booting")
-    while vm1.status() == EnvStatus.BOOTING or vm2.status() == EnvStatus.BOOTING:
-        sleep(1)
-
-    print(f"vm1: {vm1.get_access_info()}")
-    print(f"vm2: {vm2.get_access_info()}")
-
-    input("Press Enter to remove vm...")
-    vm1.destroy()
-    vm2.destroy()
-
-    remove_network(network_name)
-
-
-def test_windows():
-    cluster_id = 0
-
-    from app.utils.networking import create_network, remove_network
-    import libvirt
-
-    libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
-
-    network_name = "venvbr0"
-    create_network(network_name, cluster_id)
-
-    template = ""
-    with open(
-        "/home/milckywayy/PycharmProjects/VenvManager/temp/windows_vm_template.xml", "r"
-    ) as f:
-        template = f.read()
-
-    vm1 = VMEnvironment(
-        libvirt_client,
-        name="windows1",
-        template=template,
-        base_image_name="/var/lib/libvirt/images/win7pro.qcow2",
-        internal_ports=[3389],
-        published_ports=[2137],
-        network_name=network_name,
-    )
-
-    vm1.start()
-
-    print("Booting")
-    while vm1.status() == EnvStatus.BOOTING:
-        sleep(1)
-
-    print(f"vm1: {vm1.get_access_info()}")
-
-    input("Press Enter to remove vm...")
-    vm1.destroy()
-
-    remove_network(network_name)
-
-
-if __name__ == "__main__":
-    load_env("../../")
-
-    test_windows()

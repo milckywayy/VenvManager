@@ -1,9 +1,5 @@
 from docker.client import DockerClient
 
-from app.utils.networking import (
-    create_docker_network,
-    remove_docker_network,
-)
 from app.runtime.environment import Environment
 from app.models.status import EnvStatus
 from docker.errors import ImageNotFound, APIError, DockerException, ContainerError
@@ -121,55 +117,3 @@ class DockerEnvironment(Environment):
         self.container.remove()
 
         logging.info(f"Removed docker environment {self.name}")
-
-
-if __name__ == "__main__":
-    cluster_id = 0
-
-    from app.utils.networking import create_network, remove_network
-    import docker
-    import libvirt
-    import os
-
-    docker_client = docker.from_env()
-    libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
-
-    network_name = "venvbr0"
-    remove_network(network_name)
-    create_network(network_name, cluster_id)
-    docker_network = create_docker_network(docker_client, network_name, cluster_id)
-
-    print(docker_network)
-    print(docker_client.images.list())
-
-    container1 = DockerEnvironment(
-        docker_client,
-        name="test1",
-        image="www",
-        internal_ports=[80, 22],
-        published_ports=[5000, 5002],
-        docker_network=docker_network,
-        cluster_id=cluster_id,
-    )
-
-    container2 = DockerEnvironment(
-        docker_client,
-        name="test2",
-        image="ssh",
-        internal_ports=[22],
-        published_ports=[5001],
-        docker_network=docker_network,
-        cluster_id=cluster_id,
-    )
-    print(container2)
-
-    container1.start()
-    container2.start()
-
-    input("Press Enter to remove container...")
-
-    container1.destroy()
-    container2.destroy()
-
-    remove_docker_network(docker_network)
-    remove_network(network_name)
