@@ -1,5 +1,5 @@
 import os
-from flask import Blueprint, render_template, request, abort, redirect, url_for
+from flask import Blueprint, render_template, request, abort, redirect, url_for, flash
 import docker
 import xml.etree.ElementTree as ET
 import libvirt
@@ -29,12 +29,16 @@ def make_docker():
 
         ports = [int(p) for p in internal_ports if p.strip()]
 
-        create_docker_env(
-            name=name,
-            image=docker_image,
-            ports=ports,
-            access_info=access_info,
-        )
+        try:
+            create_docker_env(
+                name=name,
+                image=docker_image,
+                ports=ports,
+                access_info=access_info,
+            )
+            flash(f"Docker environment '{name}' created successfully!", "success")
+        except Exception as e:
+            flash(f"Failed to create Docker environment: {e}", "danger")
 
     images = docker_client.images.list()
     image_names = []
@@ -42,16 +46,9 @@ def make_docker():
         for tag in img.tags:
             image_names.append(tag)
 
-    existing_environments = (
-        Environment.query.join(Environment.docker)
-        .order_by(Environment.name.asc())
-        .all()
-    )
-
     return render_template(
         "creator/docker.html",
         images=image_names,
-        existing_environments=existing_environments,
     )
 
 
@@ -66,13 +63,17 @@ def make_vm():
 
         ports = [int(p) for p in internal_ports if p.strip()]
 
-        create_vm_env(
-            name=name,
-            template=template,
-            base_image_path=base_image_path,
-            ports=ports,
-            access_info=access_info,
-        )
+        try:
+            create_vm_env(
+                name=name,
+                template=template,
+                base_image_path=base_image_path,
+                ports=ports,
+                access_info=access_info,
+            )
+            flash(f"VM environment '{name}' created successfully!", "success")
+        except Exception as e:
+            flash(f"Failed to create VM environment: {e}", "danger")
 
     images = {}
     for name in libvirt_client.listDefinedDomains():
@@ -88,13 +89,7 @@ def make_vm():
                 images[name] = source.get("file")
                 break
 
-    existing_environments = (
-        Environment.query.join(Environment.vm).order_by(Environment.name.asc()).all()
-    )
-
-    return render_template(
-        "creator/vm.html", images=images, existing_environments=existing_environments
-    )
+    return render_template("creator/vm.html", images=images)
 
 
 @creator_bp.route("/cluster", methods=["GET", "POST"])
@@ -103,15 +98,20 @@ def make_cluster():
     error = None
 
     if request.method == "POST":
-        name = (request.form.get("name") or "").strip()
-        env_ids = [int(x) for x in request.form.getlist("environment_ids")]
+        try:
+            name = (request.form.get("name") or "").strip()
+            env_ids = [int(x) for x in request.form.getlist("environment_ids")]
 
-        if not name:
-            raise ValueError("Cluster name is required.")
-        if Cluster.query.filter_by(name=name).first():
-            raise ValueError(f"Cluster named '{name}' already exists.")
+            if not name:
+                raise ValueError("Cluster name is required.")
+            if Cluster.query.filter_by(name=name).first():
+                raise ValueError(f"Cluster named '{name}' already exists.")
 
-        create_cluster_with_envs(name=name, environment_ids=env_ids)
+            create_cluster_with_envs(name=name, environment_ids=env_ids)
+            flash(f"Cluster '{name}' created successfully!", "success")
+
+        except Exception as e:
+            flash(f"Failed to create cluster: {e}", "danger")
 
     environments = (
         Environment.query.outerjoin(Environment.docker)
@@ -139,11 +139,18 @@ def delete_env(env_id: int, callback: str):
     try:
         db.session.delete(env)
         db.session.commit()
+        flash(f"Environment '{env.name}' deleted successfully!", "success")
     except IntegrityError:
         db.session.rollback()
-        abort(400, description="Failed to delete environment (integrity error).")
+        flash("Failed to delete environment (integrity error).", "danger")
+        abort(400)
 
-    allowed = {"main.index", "creator.make_docker", "creator.make_vm"}
+    allowed = {
+        "main.index",
+        "main.environments",
+        "creator.make_docker",
+        "creator.make_vm",
+    }
     if callback not in allowed:
         abort(400, description="Forbidden callback")
 
@@ -161,9 +168,11 @@ def delete_cluster(cluster_id: int, callback: str):
     try:
         db.session.delete(cluster)
         db.session.commit()
+        flash(f"Cluster '{cluster.name}' deleted successfully!", "success")
     except IntegrityError:
         db.session.rollback()
-        abort(400, description="Failed to delete cluster (integrity error).")
+        flash("Failed to delete cluster (integrity error).", "danger")
+        abort(400)
 
     allowed = {"main.index", "creator.make_cluster"}
     if callback not in allowed:

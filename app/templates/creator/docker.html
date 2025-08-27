@@ -1,244 +1,145 @@
 {% extends "base.html" %}
 
+{% block title %}Create Environment{% endblock %}
+
 {% block head_extra %}
-
-<style>
-    :root {
-        --fg:#e5e7eb;
-        --muted:#9ca3af;
-        --border:#374151;
-        --bg:#111827;
-        --card-bg:#1e293b;
-        --input-bg:#0f172a;
-        --table-header:#1f2937;
-        --table-row:#111827;
-        --table-row-alt:#1f2937;
-        --ports-bg:#1e40af;
-        --ports-border:#2563eb;
-        --danger:#dc2626;
-        --danger-hover:#b91c1c;
-        --btn-bg:#2563eb;
-    }
-
-    body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-        background: var(--bg);
-        color: var(--fg);
-    }
-
-    form { max-width: 600px; }
-
-    label {
-        display: block;
-        margin-top: 10px;
-        font-weight: bold;
-    }
-
-    input, select {
-        width: 100%;
-        padding: 8px;
-        margin-top: 5px;
-        background: var(--input-bg);
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        color: var(--fg);
-    }
-
-    .ports {
-        margin-top: 10px;
-        border: 1px solid var(--border);
-        padding: 10px;
-        background: var(--card-bg);
-        border-radius: 6px;
-    }
-
-    .port-row {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-        margin-top: 5px;
-    }
-
-    .port-row input { width: 40%; }
-
-    .remove-btn {
-        background-color: var(--danger);
-        color: #fff;
-        border: none;
-        padding: 6px 10px;
-        cursor: pointer;
-        border-radius: 4px;
-    }
-
-    .remove-btn:hover {
-        background-color: var(--danger-hover);
-    }
-
-    .add-btn {
-        margin-top: 10px;
-        padding: 6px 12px;
-        border-radius: 4px;
-        border: none;
-        background: var(--btn-bg);
-        color: white;
-        cursor: pointer;
-    }
-
-    button[type="submit"] {
-        margin-top: 15px;
-        padding: 10px 15px;
-        border-radius: 6px;
-        border: none;
-        background: var(--btn-bg);
-        color: white;
-        cursor: pointer;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 15px;
-        border: 1px solid var(--border);
-    }
-
-    table th, table td {
-        border: 1px solid var(--border);
-        padding: 8px 12px;
-        text-align: left;
-    }
-
-    table th {
-        background-color: var(--table-header);
-        color: var(--fg);
-    }
-
-    table tbody tr:nth-child(odd) { background-color: var(--table-row); }
-    table tbody tr:nth-child(even) { background-color: var(--table-row-alt); }
-
-    .ports-list {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-    }
-
-    .ports-list li {
-        background: var(--ports-bg);
-        border: 1px solid var(--ports-border);
-        border-radius: 4px;
-        padding: 4px 8px;
-        margin: 2px 0;
-        font-family: monospace;
-        display: inline-block;
-        color: #dbeafe;
-    }
-
-    .warning {
-        background: #78350f;
-        border: 1px solid #d97706;
-        padding: 10px;
-        margin-top: 10px;
-        border-radius: 6px;
-        color: #fcd34d;
-    }
-</style>
-
 <script>
-    function addPortRow() {
-        const container = document.getElementById('ports-container');
-        const row = document.createElement('div');
-        row.className = 'port-row';
-        row.innerHTML = `
-            <input type="number" name="ports" placeholder="Internal port" min="1" max="65535" required>
-            <button type="button" class="remove-btn" onclick="removePortRow(this)">Remove</button>
-        `;
-        container.appendChild(row);
-    }
+  function addPortRow() {
+    const container = document.getElementById('ports-container');
+    const row = document.createElement('div');
+    row.className = "flex items-center gap-3";
+    row.innerHTML = `
+      <div class="flex-1">
+        <input type="number" name="ports" placeholder="Internal port (1–65535)"
+               min="1" max="65535" required
+               class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500"/>
+      </div>
+      <button type="button" onclick="removePortRow(this)"
+            class="inline-flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-2 text-sm font-medium text-slate-700
+                     border border-slate-300 shadow-sm
+                     hover:border-red-500 hover:text-red-600
+                     focus:outline-none focus:ring-2 focus:ring-red-400/60
+                     dark:bg-slate-900 dark:text-slate-300 dark:border-slate-600 dark:hover:border-red-400 dark:hover:text-red-400">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2h.293l.853 10.24A2 2 0 007.138 18h5.724a2 2 0 001.992-1.76L15.707 6H16a1 1 0 000-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM8 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd"/>
+        </svg>
+        Remove
+      </button>
+    `;
+    container.appendChild(row);
+  }
 
-    function removePortRow(button) {
-        const row = button.parentNode;
-        row.remove();
+  function removePortRow(button) {
+    const container = document.getElementById('ports-container');
+    if (container.children.length > 1) {
+      const row = button.closest('div');
+      row.remove();
+    } else {
+      alert("At least one port must be defined.");
     }
+  }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        addPortRow();
-    });
+  document.addEventListener('DOMContentLoaded', () => {
+    addPortRow();
+  });
 </script>
-
 {% endblock %}
 
 {% block content %}
 
-<h1>Create a new environment</h1>
+<div class="mx-auto max-w-6xl px-4 py-8">
+  <h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-100">Create Docker Environment</h1>
 
-<form method="POST" action="{{ url_for('creator.make_docker') }}">
+  <form method="POST" action="{{ url_for('creator.make_docker') }}"
+        class="mt-6 space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
 
-    <label for="name">Environment name</label>
-    <input type="text" id="name" name="name" required>
-
-    <label for="docker_image">Docker image</label>
-    {% if images and images|length > 0 %}
-        <select id="docker_image" name="docker_image" required>
-            <option value="" disabled selected>-- Select an image --</option>
-            {% for name in images %}
-                <option value="{{ name }}">{{ name }}</option>
-            {% endfor %}
-        </select>
-    {% else %}
-        <div class="warning">
-            No local images with tags were found. Pull some images first (e.g. <code>docker pull python:3.12</code>),
-            then reload this page.
-        </div>
-    {% endif %}
-
-    <div class="ports">
-        <label>Ports</label>
-        <div id="ports-container"></div>
-        <button type="button" class="add-btn" onclick="addPortRow()">Add port</button>
+    <!-- Env name -->
+    <div>
+      <label for="name" class="mb-1 block text-sm font-medium text-slate-800 dark:text-slate-200">
+        Environment name
+      </label>
+      <input type="text" id="name" name="name" required
+             placeholder="Example: Simple SSH server"
+             class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder-slate-500"/>
     </div>
 
-    <label for="access_info">Access Info</label>
-    <input type="text" id="access_info" name="access_info" required>
+    <!-- Docker image -->
+    <div>
+      <label for="docker_image" class="mb-1 block text-sm font-medium text-slate-800 dark:text-slate-200">
+        Docker image
+      </label>
 
-    <button type="submit">Create environment</button>
-</form>
+      {% if images and images|length > 0 %}
+        <select id="docker_image" name="docker_image" required
+                class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+          <option value="" disabled selected>-- Select an image --</option>
+          {% for name in images %}
+            <option value="{{ name }}">{{ name }}</option>
+          {% endfor %}
+        </select>
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Select a pre-built Docker image.</p>
+      {% else %}
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 ring-1 ring-inset ring-amber-200 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-200 dark:ring-amber-900/40">
+          <div class="flex items-start gap-3">
+            <span class="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full ring-1 ring-inset ring-amber-200 dark:ring-amber-900/50">
+              <!-- warning icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l6.518 11.586c.75 1.334-.213 3.015-1.743 3.015H3.482c-1.53 0-2.493-1.68-1.743-3.015L8.257 3.1zM11 14a1 1 0 11-2 0 1 1 0 012 0zm-1-2a1 1 0 01-1-1V7a1 1 0 112 0v4a1 1 0 01-1 1z" clip-rule="evenodd"/>
+              </svg>
+            </span>
+            <div class="text-sm">
+              No local images with tags were found.
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
 
-{% if existing_environments and existing_environments|length > 0 %}
-    <h2>Existing Docker environments</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Image</th>
-                <th>Ports</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for env in existing_environments %}
-            <tr>
-                <td>{{ env.name }}</td>
-                <td>{{ env.docker.image }}</td>
-                <td>
-                    {% if env.ports %}
-                        <ul class="ports-list">
-                            {% for p in env.ports %}
-                                <li>{{ p }}</li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        —
-                    {% endif %}
-                </td>
-                <td>
-                    <form method="POST" action="{{ url_for('creator.delete_env', env_id=env.id, callback='creator.make_docker') }}" onsubmit="return confirm('Usunąć środowisko {{ env.name }}?');">
-                      <button type="submit" class="remove-btn">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% endif %}
+    <!-- Ports -->
+    <div>
+      <div class="flex items-center justify-between">
+        <label class="block text-sm font-medium text-slate-800 dark:text-slate-200">Ports</label>
+        <button type="button" onclick="addPortRow()"
+                class="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm font-medium text-slate-700
+                         border border-slate-300 shadow-sm
+                         hover:border-blue-500 hover:text-blue-600
+                         focus:outline-none focus:ring-2 focus:ring-blue-400/60
+                         dark:bg-slate-900 dark:text-slate-200 dark:border-slate-600
+                         dark:hover:border-blue-400 dark:hover:text-blue-400">
+          <!-- plus icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" d="M12 5v14M5 12h14"/>
+          </svg>
+          Add port
+        </button>
+      </div>
+      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Specify one or more internal ports to expose.</p>
+
+      <div id="ports-container" class="mt-3 space-y-2"></div>
+    </div>
+
+    <!-- Access Info -->
+    <div>
+      <label for="access_info" class="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200">
+        Access Info
+      </label>
+      <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Enter access details. Use the internal ports you defined above. e.g. {{ '{{port}}' }}.</p>
+      <textarea id="access_info" name="access_info" required rows="3"
+                placeholder="http://localhost:{{ '{{22}}' }}"
+                class="block w-full rounded-lg border border-slate-300 bg-white mt-3 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder-slate-500"></textarea>
+    </div>
+
+    <!-- Submit -->
+    <div class="pt-2">
+      <button type="submit"
+        class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-blue-500/30 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600/50 active:translate-y-px">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+          </svg>
+          Create Environment
+        </button>
+    </div>
+  </form>
+</div>
 
 {% endblock %}
