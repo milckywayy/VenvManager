@@ -2,7 +2,66 @@
 
 {% block title %}Created Environments{% endblock %}
 
-{% block head_extra %}{% endblock %}
+{% block head_extra %}
+<script>
+  function qs(sel, ctx=document){ return ctx.querySelector(sel) }
+  function qsa(sel, ctx=document){ return Array.from(ctx.querySelectorAll(sel)) }
+  function getRows(){ return qsa('[data-env-row]') }
+  function valueOrEmpty(v){ return (v || '').toString().toLowerCase() }
+
+  function filterEnvs(){
+    const q = valueOrEmpty(qs('#env-search')?.value).trim()
+    const type = qs('#env-type')?.value || 'all'
+    getRows().forEach(r => {
+      const text = valueOrEmpty(r.dataset.search)
+      const rType = r.dataset.type || 'none'
+      const matchText = !q || text.includes(q)
+      const matchType = (type==='all') || (type===rType)
+      r.style.display = (matchText && matchType) ? '' : 'none'
+    })
+  }
+
+  function sortEnvs(by){
+    const tbody = qs('#env-tbody'); if(!tbody) return
+    const rows = getRows()
+    const dirEl = qs(`#sort-${by}`)
+    const dir = (dirEl?.dataset.dir === 'asc') ? 'desc' : 'asc'
+    if(dirEl){ dirEl.dataset.dir = dir }
+
+    const numKey = v => {
+      const m = (v || '').match(/\d+/g)
+      return m ? Math.min(...m.map(Number)) : Number.POSITIVE_INFINITY
+    }
+
+    rows.sort((a,b) => {
+      if(by==='name' || by==='image'){
+        const av = (a.dataset[by] || '').toLowerCase()
+        const bv = (b.dataset[by] || '').toLowerCase()
+        if(av < bv) return dir==='asc' ? -1 : 1
+        if(av > bv) return dir==='asc' ?  1 : -1
+        return 0
+      }
+      if(by==='port'){
+        const an = numKey(a.dataset.port)
+        const bn = numKey(b.dataset.port)
+        if(an < bn) return dir==='asc' ? -1 : 1
+        if(an > bn) return dir==='asc' ?  1 : -1
+        return 0
+      }
+      return 0
+    })
+
+    rows.forEach(r => tbody.appendChild(r))
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const search = qs('#env-search'); if(search){ search.addEventListener('input', filterEnvs) }
+    const type = qs('#env-type'); if(type){ type.addEventListener('change', filterEnvs) }
+
+    filterEnvs()
+  })
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="mx-auto max-w-6xl px-4 py-8">
@@ -23,11 +82,28 @@
         </svg>
       </div>
       <h2 class="text-lg font-medium text-slate-900 dark:text-slate-100">Brak środowisk</h2>
-      <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Dodaj pierwsze środowisko, aby zobaczyć je na liście.</p>
+      <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Add first environment, to see it on the list.</p>
     </div>
   {% else %}
     <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div class="overflow-x-auto">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-2 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-300">
+        <div class="flex flex-wrap items-center gap-2">
+          <input id="env-search" type="text" placeholder="Filter environments…"
+                 class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder-slate-500"/>
+          <select id="env-type" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+            <option value="all">All types</option>
+            <option value="docker">Docker</option>
+            <option value="vm">VM</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-1">
+          Sort by:
+          <button id="sort-name"  type="button" data-dir="asc" onclick="sortEnvs('name')"  class="rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800">Name</button>
+          <button id="sort-port"  type="button" data-dir="asc" onclick="sortEnvs('port')"  class="rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800">Port</button>
+          <button id="sort-image" type="button" data-dir="asc" onclick="sortEnvs('image')" class="rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800">Image</button>
+        </div>
+      </div>
+        <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
           <thead class="bg-slate-50 dark:bg-slate-800/60">
             <tr>
@@ -38,79 +114,87 @@
               <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+          <tbody id="env-tbody" class="divide-y divide-slate-200 dark:divide-slate-800">
             {% for env in existing_environments %}
-              <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                <td class="whitespace-nowrap px-4 py-3 text-sm">
-                  {% if env.docker %}
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-200 dark:bg-sky-900/20 dark:text-sky-300 dark:ring-sky-800">
-                      <!-- Docker icon -->
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3 14c0 3.866 3.134 7 7 7h5a6 6 0 006-6v-1H3zM4 13h16v-2H4v2zm5-3h3V7H9v3zm4 0h3V7h-3v3zM8 10H5V7h3v3z"/>
+              {% set _type  = env.docker and 'docker' or (env.vm and 'vm' or 'none') %}
+              {% set _image = env.docker and env.docker.image or (env.vm and env.vm.base_image_path.split('/')[-1] or '') %}
+              <tr data-env-row
+                  data-type="{{ _type }}"
+                  data-name="{{ env.name }}"
+                  data-image="{{ _image }}"
+                  data-port="{{ env.ports|join(',') if env.ports else '' }}"
+                  data-search="{{ (env.name ~ ' ' ~ _image ~ ' ' ~ (env.ports|join(' ') if env.ports else '')) | lower }}"
+                  class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+              <td class="whitespace-nowrap px-4 py-3 text-sm">
+                {% if env.docker %}
+                  <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-200 dark:bg-sky-900/20 dark:text-sky-300 dark:ring-sky-800">
+                    <!-- Docker icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3 14c0 3.866 3.134 7 7 7h5a6 6 0 006-6v-1H3zM4 13h16v-2H4v2zm5-3h3V7H9v3zm4 0h3V7h-3v3zM8 10H5V7h3v3z"/>
+                    </svg>
+                    Docker
+                  </span>
+                {% elif env.vm %}
+                  <span class="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:ring-violet-800">
+                    <!-- VM icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v9a2 2 0 01-2 2h-5l2 3H9l2-3H6a2 2 0 01-2-2V5z"/>
+                    </svg>
+                    VM
+                  </span>
+                {% endif %}
+              </td>
+
+              <td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">
+                {{ env.name }}
+              </td>
+
+              <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
+                {% if env.docker %}
+                  {{ env.docker.image }}
+                {% elif env.vm %}
+                  {{ env.vm.base_image_path.split("/")[-1] }}
+                {% endif %}
+              </td>
+
+              <td class="px-4 py-3 text-sm">
+                {% if env.ports %}
+                  <ul class="flex flex-wrap gap-2">
+                    {% for p in env.ports %}
+                      <li class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
+                        {{ p }}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% else %}
+                  <span class="text-slate-400 dark:text-slate-500">—</span>
+                {% endif %}
+              </td>
+
+              <td class="whitespace-nowrap px-4 py-3">
+                <div class="flex justify-end gap-2">
+                  <a href="{{ url_for('main.environments', env_id=env.id) }}"
+                     class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm ring-1 ring-inset ring-blue-500/30 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600/50 active:translate-y-px">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5h2m-1 0v12m-6 4h12a2 2 0 002-2V7l-6-6H7a2 2 0 00-2 2v16a2 2 0 002 2z"/>
+                    </svg>
+                    Edit
+                  </a>
+
+                  <form method="POST"
+                        action="{{ url_for('creator.delete_env', env_id=env.id, callback='main.environments') }}"
+                        onsubmit="return confirm('Confirm deleting {{ env.name }} environment.');">
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white shadow-sm ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-600/50 active:translate-y-px">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 100 2h.293l.853 10.24A2 2 0 007.138 18h5.724a2 2 0 001.992-1.76L15.707 6H16a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zm-1 6a1 1 0 112 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 112 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd"/>
                       </svg>
-                      Docker
-                    </span>
-                  {% elif env.vm %}
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:ring-violet-800">
-                      <!-- VM icon -->
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v9a2 2 0 01-2 2h-5l2 3H9l2-3H6a2 2 0 01-2-2V5z"/>
-                      </svg>
-                      VM
-                    </span>
-                  {% endif %}
-                </td>
-
-                <td class="whitespace-nowrap px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">
-                  {{ env.name }}
-                </td>
-
-                <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
-                  {% if env.docker %}
-                    {{ env.docker.image }}
-                  {% elif env.vm %}
-                    {{ env.vm.base_image_path.split("/")[-1] }}
-                  {% endif %}
-                </td>
-
-                <td class="px-4 py-3 text-sm">
-                  {% if env.ports %}
-                    <ul class="flex flex-wrap gap-2">
-                      {% for p in env.ports %}
-                        <li class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
-                          {{ p }}
-                        </li>
-                      {% endfor %}
-                    </ul>
-                  {% else %}
-                    <span class="text-slate-400 dark:text-slate-500">—</span>
-                  {% endif %}
-                </td>
-
-                <td class="whitespace-nowrap px-4 py-3">
-                  <div class="flex justify-end gap-2">
-                    <a href="{{ url_for('main.environments', env_id=env.id) }}"
-                       class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm ring-1 ring-inset ring-blue-500/30 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600/50 active:translate-y-px">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M11 5h2m-1 0v12m-6 4h12a2 2 0 002-2V7l-6-6H7a2 2 0 00-2 2v16a2 2 0 002 2z"/>
-                      </svg>
-                      Edit
-                    </a>
-
-                    <form method="POST"
-                          action="{{ url_for('creator.delete_env', env_id=env.id, callback='main.environments') }}"
-                          onsubmit="return confirm('Confirm deleting {{ env.name }} environment.');">
-                      <button type="submit"
-                              class="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white shadow-sm ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-600/50 active:translate-y-px">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                          <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 100 2h.293l.853 10.24A2 2 0 007.138 18h5.724a2 2 0 001.992-1.76L15.707 6H16a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zm-1 6a1 1 0 112 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 112 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd"/>
-                        </svg>
-                        Delete
-                      </button>
-                    </form>
-                  </div>
-                </td>
+                      Delete
+                    </button>
+                  </form>
+                </div>
+              </td>
               </tr>
             {% endfor %}
           </tbody>
