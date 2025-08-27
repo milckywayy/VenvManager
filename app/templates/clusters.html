@@ -10,20 +10,6 @@
   function getRows(){ return qsa('[data-cluster-row]') }
   function valueOrEmpty(v){ return (v || '').toString().toLowerCase() }
 
-  // --- Toasts ---
-  function toast(msg, type='info') {
-    const holder = document.getElementById('toast-holder');
-    if (!holder) return alert(msg);
-    const el = document.createElement('div');
-    el.className = `pointer-events-auto mb-2 w-full max-w-sm overflow-hidden rounded-xl border p-3 text-sm shadow-lg ring-1 ring-inset transition-all
-      ${type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-900 ring-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-900/40 dark:text-emerald-200' : ''}
-      ${type==='error' ? 'bg-rose-50 border-rose-200 text-rose-900 ring-rose-200 dark:bg-rose-900/20 dark:border-rose-900/40 dark:text-rose-200' : ''}
-      ${type==='info' ? 'bg-slate-50 border-slate-200 text-slate-900 ring-slate-200 dark:bg-slate-900/60 dark:border-slate-800 dark:text-slate-100' : ''}`;
-    el.textContent = msg;
-    holder.appendChild(el);
-    setTimeout(()=>{ el.classList.add('opacity-0','translate-y-1'); setTimeout(()=>el.remove(), 250);}, 2500);
-  }
-
   // --- API wrapper with button state ---
   async function callApi(url, opts, btn){
     try {
@@ -40,25 +26,25 @@
   // --- Cluster actions ---
   async function startCluster(clusterId, btn){
     const data = await callApi(`/api/run/${clusterId}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: '0' })
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: '65535' })
     }, btn);
-    toast(`Start: ${JSON.stringify(data)}`, 'success');
+    alert(JSON.stringify(data));
   }
 
   async function restartCluster(btn){
     if (!confirm('Zrestartować klaster? Trwające sesje mogą zostać przerwane.')) return;
-    const data = await callApi(`/api/restart`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: '0' })
+    await callApi(`/api/restart`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: '65535' })
     }, btn);
-    toast(`Restart: ${JSON.stringify(data)}`, 'info');
+    alert('Cluster restarted.');
   }
 
   async function stopCluster(btn){
     if (!confirm('Zatrzymać klaster?')) return;
-    const data = await callApi(`/api/stop`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: '0' })
+    await callApi(`/api/stop`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: '65535' })
     }, btn);
-    toast(`Stop: ${JSON.stringify(data)}`, 'success');
+    alert('Cluster stopped.');
   }
 
   // --- Filter & sort ---
@@ -184,17 +170,49 @@
                 <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{{ cluster.environments|length }} environments</td>
                 <td class="px-4 py-3">
                   <div class="flex justify-end gap-2">
-                    <button onclick="startCluster({{ cluster.id }}, this)"
-                            class="rounded bg-emerald-600 px-3 py-1.5 text-sm text-white ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500">Start</button>
-                    <button onclick="stopCluster(this)"
-                            class="rounded bg-slate-200 px-3 py-1.5 text-sm text-slate-800 ring-1 ring-inset ring-slate-300 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700">Stop</button>
-                    <button onclick="restartCluster(this)"
-                            class="rounded bg-amber-500 px-3 py-1.5 text-sm text-white ring-1 ring-inset ring-amber-400/60 hover:bg-amber-400">Restart</button>
-                    <form method="post" action="{{ url_for('creator.delete_cluster', cluster_id=cluster.id, callback='main.index') }}"
-                          onsubmit="return confirm('Na pewno usunąć klaster „{{ cluster.name }}”? Tej operacji nie można cofnąć.');" style="display:inline">
-                      <button type="submit" class="rounded bg-rose-600 px-3 py-1.5 text-sm text-white ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500">Delete</button>
-                    </form>
-                  </div>
+                      <button
+                        onclick="startCluster({{ cluster.id }}, this)"
+                        class="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-2 py-2 text-xs font-medium text-white ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M8 5v14l11-7-11-7z"/>
+                        </svg>
+                        Start
+                      </button>
+
+                      <button
+                        onclick="stopCluster(this)"
+                        class="inline-flex items-center gap-1.5 rounded-md bg-slate-200 px-2 py-2 text-xs font-medium text-slate-900 ring-1 ring-inset ring-slate-300 hover:bg-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 disabled:opacity-60 disabled:cursor-not-allowed dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-700"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M6 6h12v12H6z"/>
+                        </svg>
+                        Stop
+                      </button>
+
+                      <button
+                        onclick="restartCluster(this)"
+                        class="inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-2 py-2 text-xs font-medium text-white ring-1 ring-inset ring-amber-400/60 hover:bg-amber-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M12 6V3l4 4-4 4V8a4 4 0 104 4h2a6 6 0 11-6-6z"/>
+                        </svg>
+                        Restart
+                      </button>
+
+                      <form method="post" action="{{ url_for('creator.delete_cluster', cluster_id=cluster.id, callback='main.index') }}"
+                            onsubmit="return confirm('Na pewno usunąć klaster „{{ cluster.name }}”? Tej operacji nie można cofnąć.');" style="display:inline">
+                        <button
+                          type="submit"
+                          class="inline-flex items-center gap-1.5 rounded-md bg-rose-600 px-2 py-2 text-xs font-medium text-white ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/50 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M9 3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1h5v2H4V4h5V3zm-3 5h12l-1 12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6"/>
+                          </svg>
+                          Delete
+                        </button>
+                      </form>
+                    </div>
                 </td>
               </tr>
 

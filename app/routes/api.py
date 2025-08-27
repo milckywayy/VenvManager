@@ -35,7 +35,9 @@ def run(cluster_id: int):
 
     environments_db = cluster_db.environments
 
-    cluster = Cluster(name=f"{session_id}-{cluster_db.name}", cluster_id=cluster_db.id)
+    cluster = Cluster(
+        name=f"{session_id}-{cluster_db.name}", cluster_id=int(session_id)
+    )
 
     for env_db in environments_db:
         internal_ports = env_db.ports
