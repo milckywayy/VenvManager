@@ -146,3 +146,25 @@ def remove():
     del clusters[session_id]
 
     return jsonify({"status": "stopped"}), 200
+
+
+@api_bp.route("/running_clusters", methods=["GET"])
+def running_clusters():
+    result = []
+    for session_id, cluster in clusters.items():
+        cluster_id = cluster.db_id
+        cluster_db = ClusterModel.query.filter_by(id=cluster_id).first()
+        cluster_name = cluster_db.name
+
+        if not cluster_db:
+            continue
+
+        result.append(
+            {
+                "session_id": session_id,
+                "cluster_name": cluster_name,
+                "cluster_id": cluster_id,
+            }
+        )
+
+    return jsonify(result), 200

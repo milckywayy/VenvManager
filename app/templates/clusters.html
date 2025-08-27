@@ -351,7 +351,7 @@
                         <span class="btn-label">Restart</span>
                       </button>
 
-                      <form method="post" action="{{ url_for('creator.delete_cluster', cluster_id=cluster.id, callback='main.index') }}"
+                      <form method="post" action="{{ url_for('creator.delete_cluster', cluster_id=cluster.id, callback='main.clusters') }}"
                             onsubmit="return confirm('Na pewno usunąć klaster „{{ cluster.name }}”? Tej operacji nie można cofnąć.');" style="display:inline">
                         <button
                           type="submit"

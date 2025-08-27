@@ -174,7 +174,7 @@ def delete_cluster(cluster_id: int, callback: str):
         flash("Failed to delete cluster (integrity error).", "danger")
         abort(400)
 
-    allowed = {"main.index", "creator.make_cluster"}
+    allowed = {"main.index", "main.clusters", "creator.make_cluster"}
     if callback not in allowed:
         abort(400, description="Forbidden callback")
 
