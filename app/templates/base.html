@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}{% endblock %} - VenvManager</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
   {% block head_extra %}{% endblock %}
 </head>
 <body class="min-h-screen bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
@@ -77,14 +79,6 @@
       <!-- Main -->
       <main id="content" class="flex-1 min-w-0">
         <div class="mx-auto p-6">
-          {% block flashes %}
-            {% for msg in get_flashed_messages() or [] %}
-              <div class="mb-4 rounded-md border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3">
-                {{ msg }}
-              </div>
-            {% endfor %}
-          {% endblock %}
-
           {% block content %}
           <h1 class="text-2xl font-semibold tracking-tight">Hello 👋</h1>
           {% endblock %}
@@ -130,6 +124,29 @@
       const mql = window.matchMedia('(min-width: 768px)');
       function handle(mq){ mq.matches ? backdrop.classList.add('hidden') : close(); }
       handle(mql); mql.addEventListener('change', handle);
+
+      const map = {
+        success: { bg: "linear-gradient(90deg,#10b981,#34d399)" },
+        error:   { bg: "linear-gradient(90deg,#ef4444,#f43f5e)" },
+        warning: { bg: "linear-gradient(90deg,#f59e0b,#fbbf24)" },
+        info:    { bg: "linear-gradient(90deg,#0ea5e9,#38bdf8)" }
+      };
+
+      {% for category, msg in get_flashed_messages(with_categories=true) or [] %}
+        (function(){
+          const cat = "{{ (category or 'info')|e }}";
+          Toastify({
+            text: {{ msg|tojson }},
+            duration: 4000,
+            gravity: "top",
+            position: "center",
+            stopOnFocus: true,
+            close: true,
+            escapeMarkup: true,
+            style: { background: (map[cat]||map.info).bg }
+          }).showToast();
+        })();
+      {% endfor %}
     })();
   </script>
 
