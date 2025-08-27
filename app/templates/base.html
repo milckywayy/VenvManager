@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{% block title %}VenvManager{% endblock %}</title>
+  <title>{% block title %}{% endblock %} - VenvManager</title>
   <script src="https://cdn.tailwindcss.com"></script>
   {% block head_extra %}{% endblock %}
 </head>
@@ -51,6 +51,7 @@
 
           {% set items = [
             {'id': 'dashboard', 'label': 'Dashboard', 'href': url_for('main.index')},
+            {'id': 'environments', 'label': 'Environments', 'href': url_for('main.environments')},
             {'id': 'make_cluster', 'label': 'Make Cluster', 'href': url_for('creator.make_cluster')},
             {'id': 'make_docker', 'label': 'Make Docker', 'href': url_for('creator.make_docker')},
             {'id': 'make_vm', 'label': 'Make VM', 'href': url_for('creator.make_vm')}
