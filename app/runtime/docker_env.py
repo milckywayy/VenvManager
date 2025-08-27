@@ -106,6 +106,32 @@ class DockerEnvironment(Environment):
             else EnvStatus.UNKNOWN
         )
 
+    def get_resource_usage(self) -> dict:
+        if self.container is None:
+            return {"cpu": 0.0, "memory": 0, "network": {"rx": 0, "tx": 0}}
+
+        try:
+            stats = self.container.stats(stream=False)
+
+            # --- Memory (bytes) ---
+            mem_stats = stats.get("memory_stats", {}) or {}
+            mem_usage = int(mem_stats.get("usage", 0) or 0)
+            mem_cache = int((mem_stats.get("stats", {}) or {}).get("cache", 0) or 0)
+            mem_real = max(0, mem_usage - mem_cache)
+
+            # --- Network (bytes) ---
+            networks = stats.get("networks") or {}
+            rx = sum(int(v.get("rx_bytes", 0) or 0) for v in networks.values())
+            tx = sum(int(v.get("tx_bytes", 0) or 0) for v in networks.values())
+
+            return {"memory": mem_real, "network": {"rx": rx, "tx": tx}}
+
+        except Exception as e:
+            logging.exception(
+                f"Failed to read docker resources for {getattr(self, 'name', 'unknown')}: {e}"
+            )
+            return {"cpu": 0.0, "memory": 0, "network": {"rx": 0, "tx": 0}}
+
     def destroy(self):
         if self.container is None:
             logging.warning(

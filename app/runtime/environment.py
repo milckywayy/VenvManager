@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Dict
 
 from app.models.status import EnvStatus
 
@@ -40,6 +41,10 @@ class Environment(ABC):
         for internal, published in zip(self.internal_ports, self.published_ports):
             result = result.replace(f"{{{{{internal}}}}}", str(published))
         return result
+
+    @abstractmethod
+    def get_resource_usage(self) -> Dict[str, float]:
+        pass
 
     @abstractmethod
     def destroy(self):

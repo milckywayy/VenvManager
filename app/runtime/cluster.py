@@ -59,6 +59,18 @@ class Cluster:
     def get_access_info(self) -> dict:
         return {env.display_name: env.get_access_info() for env in self.environments}
 
+    def get_resource_usage(self) -> dict:
+        total = {"memory": 0, "network": {"rx": 0, "tx": 0}}
+
+        per_env = {}
+        for env in self.environments:
+            r = env.get_resource_usage()
+            per_env[env.display_name] = r
+            total["memory"] += int(r.get("memory", 0))
+            total["network"]["rx"] += int(r.get("network", {}).get("rx", 0))
+            total["network"]["tx"] += int(r.get("network", {}).get("tx", 0))
+        return {"total": total, "environments": per_env}
+
     def destroy(self):
         for env in self.environments:
             env.destroy()

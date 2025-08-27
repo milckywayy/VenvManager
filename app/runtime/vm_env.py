@@ -191,6 +191,56 @@ class VMEnvironment(Environment):
         logging.debug(f"Checking vm {self.name} status: {state}")
         return state_mapping.get(state, EnvStatus.UNKNOWN)
 
+    def get_resource_usage(self) -> dict:
+        if not getattr(self, "domain", None):
+            return {"cpu": 0.0, "memory": 0, "network": {"rx": 0, "tx": 0}}
+
+        try:
+            # --- Memory (bytes) ---
+            mem_stats = self.domain.memoryStats() or {}
+            rss_kib = mem_stats.get("rss")
+            actual_kib = mem_stats.get("actual")
+
+            if rss_kib is not None:
+                mem_bytes = int(rss_kib) * 1024
+            elif actual_kib is not None:
+                mem_bytes = int(actual_kib) * 1024
+            else:
+                try:
+                    info = self.domain.info()
+                    mem_bytes = int(info[2]) * 1024
+                except Exception:
+                    mem_bytes = 0
+
+            # --- Network (bytes) ---
+            rx_total = tx_total = 0
+            try:
+                xml_desc = self.domain.XMLDesc()
+                root = ET.fromstring(xml_desc)
+                for target in root.findall(".//devices/interface/target"):
+                    dev = target.attrib.get("dev")
+                    if not dev:
+                        continue
+                    try:
+                        stats = self.domain.interfaceStats(dev)
+                        rx_total += int(stats[0] or 0)
+                        tx_total += int(stats[4] or 0)
+                    except Exception:
+                        continue
+            except Exception:
+                pass
+
+            return {
+                "memory": int(mem_bytes),
+                "network": {"rx": int(rx_total), "tx": int(tx_total)},
+            }
+
+        except Exception as e:
+            logging.exception(
+                f"Failed to read VM resources for {getattr(self, 'name', 'unknown')}: {e}"
+            )
+            return {"cpu": 0.0, "memory": 0, "network": {"rx": 0, "tx": 0}}
+
     def destroy(self):
         if not self.domain:
             logging.warning(

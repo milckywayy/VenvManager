@@ -1,265 +1,400 @@
 {% extends "base.html" %}
 
 {% block head_extra %}
+  <style>
+    .meter { @apply h-2 w-full rounded bg-gray-200 dark:bg-gray-800 overflow-hidden; }
+    .meter > span { @apply block h-full rounded; background: linear-gradient(90deg, rgb(59 130 246), rgb(34 197 94)); }
+
+    .shimmer { position: relative; overflow: hidden; }
+    .shimmer::after {
+      content:""; position:absolute; inset:0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent);
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer { 100% { transform: translateX(100%); } }
+
+    .skeleton {
+      @apply bg-gray-200 dark:bg-gray-700 rounded;
+      position: relative;
+      overflow: hidden;
+      color: transparent !important;
+    }
+    .skeleton::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      transform: translateX(-100%);
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+      animation: shimmer 1.5s infinite;
+    }
+    .sk-text { @apply h-4 inline-block align-middle; min-width: 6ch; }
+    .sk-text.sm { @apply h-3; min-width: 4ch; }
+  </style>
 {% endblock %}
 
 {% block content %}
 <div class="mx-auto max-w-6xl px-4 py-8">
-
-  <!-- Header -->
-  <div class="mb-8 flex items-center justify-between">
+  <header class="mb-6 flex items-center justify-between">
     <div>
-      <h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-100">VenvManager Overview</h1>
-      <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
-        Live metrics &amp; running clusters
-        <span id="last-updated" class="ml-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-          updating…
-        </span>
+      <h1 class="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+        VenvManager Overview
+      </h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400">
+        <span id="lastUpdated" class="sk-text skeleton">—</span>
       </p>
     </div>
     <div class="flex items-center gap-2">
-      <button id="refresh-btn" class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 mr-1">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-        </svg>
+      <button id="refreshBtn"
+        class="rounded-md border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800">
         Refresh
       </button>
-      <span id="clusters-count-pill" class="hidden items-center rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-800">
-        0 running
-      </span>
     </div>
+  </header>
+
+  <div class="grid gap-6 md:grid-cols-2">
+    <section class="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 p-5">
+      <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Host</h2>
+      <div class="space-y-4">
+        <div>
+          <div class="mb-1 flex items-center justify-between">
+            <span class="text-sm text-gray-600 dark:text-gray-300">CPU usage</span>
+            <span id="hostCpuLabel" class="text-sm font-medium text-gray-900 dark:text-gray-100 sk-text skeleton">—</span>
+          </div>
+          <div class="meter"><span id="hostCpuBar" class="skeleton" style="width:100%"></span></div>
+        </div>
+
+        <div>
+          <div class="mb-1 flex items-center justify-between">
+            <span class="text-sm text-gray-600 dark:text-gray-300">Memory usage</span>
+            <span id="hostMemLabel" class="text-sm font-medium text-gray-900 dark:text-gray-100 sk-text skeleton">—</span>
+          </div>
+          <div class="meter"><span id="hostMemBar" class="skeleton" style="width:100%"></span></div>
+          <p id="hostMemTotal" class="mt-1 text-xs text-gray-500 dark:text-gray-400 sk-text sm skeleton">—</p>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
+            <div class="text-xs text-gray-500 dark:text-gray-400">Network – RX</div>
+            <div id="hostRx" class="text-sm font-semibold text-gray-900 dark:text-gray-100 sk-text skeleton">—</div>
+          </div>
+          <div class="rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
+            <div class="text-xs text-gray-500 dark:text-gray-400">Network – TX</div>
+            <div id="hostTx" class="text-sm font-semibold text-gray-900 dark:text-gray-100 sk-text skeleton">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 p-5">
+      <h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Clusters</h2>
+      <div class="space-y-4">
+        <div>
+          <div class="mb-1 flex items-center justify-between">
+            <span class="text-sm text-gray-600 dark:text-gray-300">Running clusters</span>
+            <span id="clustersCountLabel" class="text-sm font-medium text-gray-900 dark:text-gray-100 sk-text skeleton">—</span>
+          </div>
+          <div class="meter"><span id="clustersCountBar" class="skeleton" style="width:100%"></span></div>
+        </div>
+
+        <div>
+          <div class="mb-1 flex items-center justify-between">
+            <span class="text-sm text-gray-600 dark:text-gray-300">Memory (MB)</span>
+            <span id="overallMemLabel" class="text-sm font-medium text-gray-900 dark:text-gray-100 sk-text skeleton">—</span>
+          </div>
+          <div class="meter"><span id="overallMemBar" class="skeleton" style="width:100%"></span></div>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400 sk-text sm">Clusters summary usage</p>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
+            <div class="text-xs text-gray-500 dark:text-gray-400">Network – RX</div>
+            <div id="overallRx" class="text-sm font-semibold text-gray-900 dark:text-gray-100 sk-text skeleton">—</div>
+          </div>
+          <div class="rounded-lg bg-gray-50 dark:bg-gray-800 p-3">
+            <div class="text-xs text-gray-500 dark:text-gray-400">Network – TX</div>
+            <div id="overallTx" class="text-sm font-semibold text-gray-900 dark:text-gray-100 sk-text skeleton">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 
-  <!-- Section: Resource Usage -->
-  <div class="mb-10">
-    <div class="mb-6 flex items-end justify-between gap-4">
-      <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Resource Usage</h2>
+  <section class="mt-8">
+    <div class="mb-3 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Running Clusters</h2>
+      <input id="clusterSearch" type="search" placeholder="Search by name or ID…"
+             class="w-72 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
     </div>
 
-    {% if resources|length == 0 %}
-      <div class="rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h3 class="text-lg font-medium text-slate-900 dark:text-slate-100">No data</h3>
-        <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">No resource usage information available yet.</p>
-      </div>
-    {% else %}
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <!-- CPU -->
-        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-slate-500 dark:text-slate-400">CPU</span>
-            <span class="text-xs font-medium text-slate-700 dark:text-slate-300">{{ resources.cpu }}%</span>
-          </div>
-          <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-            <div class="h-full rounded-full bg-emerald-500" style="width: {{ resources.cpu }}%"></div>
-          </div>
-        </div>
-        <!-- RAM -->
-        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-slate-500 dark:text-slate-400">RAM</span>
-            <span class="text-xs font-medium text-slate-700 dark:text-slate-300">{{ resources.ram }} MB</span>
-          </div>
-          <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-            <div class="h-full rounded-full bg-indigo-500" style="width: {{ (resources.ram_percent or 0) }}%"></div>
-          </div>
-          {% if resources.ram_total %}
-            <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">of {{ resources.ram_total }} MB</div>
-          {% endif %}
-        </div>
-        <!-- Disk -->
-        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-slate-500 dark:text-slate-400">Disk</span>
-            <span class="text-xs font-medium text-slate-700 dark:text-slate-300">{{ resources.disk }} GB</span>
-          </div>
-          <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-            <div class="h-full rounded-full bg-amber-500" style="width: {{ (resources.disk_percent or 0) }}%"></div>
-          </div>
-          {% if resources.disk_total %}
-            <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">of {{ resources.disk_total }} GB</div>
-          {% endif %}
-        </div>
-        <!-- GPU -->
-        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div class="flex items-center justify-between">
-            <span class="text-sm text-slate-500 dark:text-slate-400">GPU</span>
-            <span class="text-xs font-medium text-slate-700 dark:text-slate-300">
-              {{ resources.gpu_util or '—' }}{% if resources.gpu_util %}%{% endif %}
-            </span>
-          </div>
-          <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-            <div class="h-full rounded-full bg-fuchsia-500" style="width: {{ (resources.gpu_util or 0) }}%"></div>
-          </div>
-          {% if resources.gpu_name %}
-            <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">{{ resources.gpu_name }}</div>
-          {% endif %}
-        </div>
-      </div>
-    {% endif %}
-  </div>
-
-  <!-- Section: Running Clusters -->
-  <div>
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Running Clusters</h2>
-
-      <div class="flex items-center gap-2">
-        <div class="relative">
-          <input id="filter-input" type="text" placeholder="Filter by name or ID..."
-                 class="w-64 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-900/40">
-          <svg xmlns="http://www.w3.org/2000/svg" class="pointer-events-none absolute right-2 top-2.5 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        </div>
-      </div>
-    </div>
-
-    <!-- Error banner -->
-    <div id="error-banner" class="mb-3 hidden rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-900/20 dark:text-rose-300">
-      Failed to fetch clusters. Retrying…
-    </div>
-
-    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+    <div class="overflow-hidden rounded-xl border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
         <thead class="bg-slate-50 dark:bg-slate-800/60">
           <tr>
             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Session ID</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Cluster Name</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Cluster ID</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Cluster Name</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Cluster ID</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Memory</th>
+            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Network RX / TX</th>
           </tr>
         </thead>
-        <tbody id="clusters-tbody" class="divide-y divide-slate-200 dark:divide-slate-800">
-          <!-- Skeleton rows -->
-          <tr class="animate-pulse" aria-hidden="true">
-            <td class="px-4 py-3"><div class="h-4 w-40 rounded bg-slate-100 dark:bg-slate-800"></div></td>
-            <td class="px-4 py-3"><div class="h-4 w-32 rounded bg-slate-100 dark:bg-slate-800"></div></td>
-            <td class="px-4 py-3"><div class="h-4 w-48 rounded bg-slate-100 dark:bg-slate-800"></div></td>
-            <td class="px-4 py-3"><div class="h-6 w-20 rounded-full bg-slate-100 dark:bg-slate-800"></div></td>
-            <td class="px-4 py-3"><div class="h-8 w-16 rounded-lg bg-slate-100 dark:bg-slate-800"></div></td>
-          </tr>
+        <tbody id="clustersBody" class="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 p-5">
+          <tr class="shimmer"><td class="px-4 py-6 text-sm text-gray-400" colspan="5"></td></tr>
+          <tr class="shimmer"><td class="px-4 py-6 text-sm text-gray-400" colspan="5"></td></tr>
+          <tr class="shimmer"><td class="px-4 py-6 text-sm text-gray-400" colspan="5"></td></tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Empty state -->
-    <div id="empty-state" class="mt-4 hidden rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <h3 class="text-lg font-medium text-slate-900 dark:text-slate-100">No running clusters</h3>
-      <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Start your first cluster to see it listed here.</p>
+    <div id="clustersEmpty" class="hidden rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center text-gray-500 dark:text-gray-400">
+      No clusters to display.
     </div>
-  </div>
+  </section>
 </div>
 
 <script>
-const API_URL = "{{ url_for('api.running_clusters') }}";
+  const fmt = {
+    percent: v => (v == null ? "—" : `${v.toFixed(0)}%`),
+    mib: v => (v == null ? "—" : `${(Number(v)/1024/1024).toFixed(1)} MiB`),
+    bytes: v => {
+      if (v == null) return "—";
+      const units = ["B","KB","MB","GB","TB","PB"];
+      let n = Number(v), i = 0;
+      while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+      return `${n.toFixed(n < 10 ? 2 : n < 100 ? 1 : 0)} ${units[i]}`;
+    },
+    ts: () => new Date().toLocaleString(),
+  };
 
-const tbody = document.getElementById("clusters-tbody");
-const emptyState = document.getElementById("empty-state");
-const errorBanner = document.getElementById("error-banner");
-const lastUpdated = document.getElementById("last-updated");
-const countPill = document.getElementById("clusters-count-pill");
-const filterInput = document.getElementById("filter-input");
-const refreshBtn = document.getElementById("refresh-btn");
+  let hasShownSkeleton = false;
+  let inFlight = false;
 
-let allClusters = [];
+  const els = {
+    lastUpdated: document.getElementById("lastUpdated"),
 
-function fmtTime(d) {
-  const pad = (n)=> String(n).padStart(2,'0');
-  return `${d.getHours()}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
+    hostCpuLabel: document.getElementById("hostCpuLabel"),
+    hostCpuBar: document.getElementById("hostCpuBar"),
+    hostMemLabel: document.getElementById("hostMemLabel"),
+    hostMemBar: document.getElementById("hostMemBar"),
+    hostMemTotal: document.getElementById("hostMemTotal"),
+    hostRx: document.getElementById("hostRx"),
+    hostTx: document.getElementById("hostTx"),
 
-function renderRows(rows) {
-  tbody.innerHTML = '';
-  rows.forEach(cluster => {
-    const session = cluster.session_id || '—';
-    const name = cluster.cluster_name || '—';
-    const cid = cluster.cluster_id || '—';
-    tbody.insertAdjacentHTML('beforeend', `
-      <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
-        <td class="px-4 py-3 text-sm font-mono">${session}</td>
-        <td class="px-4 py-3 text-sm">${name}</td>
-        <td class="px-4 py-3 text-sm font-mono">${cid}</td>
-      </tr>
-    `);
-  });
+    clustersCountLabel: document.getElementById("clustersCountLabel"),
+    clustersCountBar: document.getElementById("clustersCountBar"),
+    overallMemLabel: document.getElementById("overallMemLabel"),
+    overallMemBar: document.getElementById("overallMemBar"),
+    overallRx: document.getElementById("overallRx"),
+    overallTx: document.getElementById("overallTx"),
 
-  // wire copy buttons
-  tbody.querySelectorAll('.copy-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const val = btn.getAttribute('data-copy');
-      try {
-        await navigator.clipboard.writeText(val);
-        btn.innerHTML = 'Copied!';
-        setTimeout(() => (btn.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" class="mr-1 h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>Copy`), 1000);
-      } catch (e) { /* noop */ }
-    });
-  });
-}
+    clustersBody: document.getElementById("clustersBody"),
+    clustersEmpty: document.getElementById("clustersEmpty"),
+    search: document.getElementById("clusterSearch"),
+    refreshBtn: document.getElementById("refreshBtn"),
+  };
 
-function applyFilters() {
-  const q = (filterInput.value || '').toLowerCase().trim();
-  let rows = allClusters.slice();
-
-  if (q) {
-    rows = rows.filter(c =>
-      String(c.cluster_name || '').toLowerCase().includes(q) ||
-      String(c.cluster_id || '').toLowerCase().includes(q) ||
-      String(c.session_id || '').toLowerCase().includes(q)
-    );
+  function setBar(el, pct) {
+    el.style.width = `${Math.max(0, Math.min(100, pct || 0))}%`;
   }
 
-  renderRows(rows);
-  emptyState.classList.toggle('hidden', rows.length !== 0);
-}
+  function showSkeleton(...nodes) {
+    for (const el of nodes) {
+      if (!el) continue;
+      el.classList.add("skeleton");
+      if (el.tagName && (el.tagName === 'SPAN' || el.tagName === 'DIV' || el.tagName === 'P')) {
+        el.textContent = "—";
+      }
+    }
+  }
+  function hideSkeleton(...nodes) {
+    for (const el of nodes) {
+      if (!el) continue;
+      el.classList.remove("skeleton");
+    }
+  }
+  function showBarSkeleton(...bars) {
+    for (const el of bars) {
+      if (!el) continue;
+      el.classList.add("skeleton");
+      el.style.width = "100%";
+    }
+  }
+  function hideBarSkeleton(...bars) {
+    for (const el of bars) {
+      if (!el) continue;
+      el.classList.remove("skeleton");
+    }
+  }
 
-function updateKPIs(data) {
-  const running = data.length;
+  function rowCluster(c) {
+    const res = c.resources || {};
+    const mem = Number(res.memory) || 0;
+    const net = res.network || {};
+    const rx = Number(net.rx) || 0;
+    const tx = Number(net.tx) || 0;
 
-  countPill.textContent = `${running} running`;
-  countPill.classList.toggle('hidden', false);
-}
+    const tr = document.createElement("tr");
+    tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/50";
+    tr.innerHTML = `
+      <td class="px-4 py-3 text-left">
+        <div class="font-mono text-base font-semibold text-gray-900 dark:text-gray-100">
+          ${escapeHtml(c.session_id || "—")}
+        </div>
+      </td>
 
-async function loadClusters({silent=false} = {}) {
-  try {
-    if (!silent) {
-      // show skeleton row while loading
-      tbody.innerHTML = `
-        <tr class="animate-pulse" aria-hidden="true">
-          <td class="px-4 py-3"><div class="h-4 w-40 rounded bg-slate-100 dark:bg-slate-800"></div></td>
-          <td class="px-4 py-3"><div class="h-4 w-32 rounded bg-slate-100 dark:bg-slate-800"></div></td>
-          <td class="px-4 py-3"><div class="h-4 w-48 rounded bg-slate-100 dark:bg-slate-800"></div></td>
-          <td class="px-4 py-3"><div class="h-6 w-20 rounded-full bg-slate-100 dark:bg-slate-800"></div></td>
-          <td class="px-4 py-3"><div class="h-8 w-16 rounded-lg bg-slate-100 dark:bg-slate-800"></div></td>
+      <td class="px-4 py-3 text-center">
+        <div class="text-sm font-medium font-semibold text-gray-900 dark:text-gray-100">
+          ${escapeHtml(c.cluster_name || "(no name)")}
+        </div>
+      </td>
+
+      <td class="px-4 py-3 text-center">
+        <div class="text-xs text-gray-600 dark:text-gray-300">
+          ${escapeHtml(c.cluster_id || "—")}
+        </div>
+      </td>
+
+      <td class="px-4 py-3 text-center">
+        <div class="text-xs text-gray-600 dark:text-gray-300">
+          ${fmt.mib(mem)}
+        </div>
+      </td>
+
+      <td class="px-4 py-3 text-right">
+        <div class="text-xs text-gray-600 dark:text-gray-300">
+          ${fmt.bytes(rx)} <span class="text-gray-400">/</span> ${fmt.bytes(tx)}
+        </div>
+      </td>
+    `;
+    return tr;
+  }
+
+
+  function escapeHtml(str) {
+    return String(str ?? "").replace(/[&<>"']/g, s => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[s]));
+  }
+
+  function filterRows() {
+    const q = (els.search.value || "").toLowerCase();
+    for (const tr of els.clustersBody.querySelectorAll("tr")) {
+      const text = tr.innerText.toLowerCase();
+      tr.style.display = text.includes(q) ? "" : "none";
+    }
+    const anyVisible = Array.from(els.clustersBody.querySelectorAll("tr")).some(tr => tr.style.display !== "none");
+    els.clustersEmpty.classList.toggle("hidden", anyVisible);
+  }
+
+  async function loadData({ showBusy = false } = {}) {
+    if (inFlight) return;
+    inFlight = true;
+
+    try {
+      if (showBusy) {
+        els.refreshBtn.disabled = true;
+        els.refreshBtn.classList.add("opacity-50","cursor-wait");
+      }
+
+      if (!hasShownSkeleton) {
+        showSkeleton(
+          els.lastUpdated,
+          els.hostCpuLabel, els.hostMemLabel, els.hostMemTotal,
+          els.hostRx, els.hostTx,
+          els.overallMemLabel, els.overallRx, els.overallTx
+        );
+        showBarSkeleton(els.hostCpuBar, els.hostMemBar, els.clustersCountBar, els.overallMemBar);
+      }
+
+      const resp = await fetch("/api/resources/summary", { cache: "no-store" });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      const h = data.host || {};
+      const hCpu = Number(h.cpu_percent) || 0;
+      els.hostCpuLabel.textContent = fmt.percent(hCpu);
+      setBar(els.hostCpuBar, hCpu);
+
+      els.hostMemLabel.textContent = fmt.percent(Number(h.memory_percent) || 0);
+      setBar(els.hostMemBar, Number(h.memory_percent) || 0);
+      els.hostMemTotal.textContent = `Total: ${fmt.bytes(h.memory_total)}`;
+
+      const hnet = h.network || {};
+      els.hostRx.textContent = fmt.bytes(hnet.rx);
+      els.hostTx.textContent = fmt.bytes(hnet.tx);
+
+      const o = data.overall || {};
+      const omem = Number(o.memory) || 0;
+      els.overallMemLabel.textContent = `${(omem/1024/1024).toFixed(1)} MiB`;
+
+      const scaleMem = Math.max(omem, Number(h.memory_total || 0));
+      const rel = scaleMem ? (omem / scaleMem) * 100 : 0;
+      setBar(els.overallMemBar, rel);
+
+      const onet = o.network || {};
+      els.overallRx.textContent = fmt.bytes(onet.rx);
+      els.overallTx.textContent = fmt.bytes(onet.tx);
+
+      const list = Array.isArray(data.clusters) ? data.clusters : [];
+      const clusterCount = list.length;
+      els.clustersCountLabel.textContent = clusterCount.toString();
+      els.clustersCountLabel.classList.remove("skeleton");
+
+      els.clustersBody.innerHTML = "";
+      if (list.length === 0) {
+        els.clustersEmpty.classList.remove("hidden");
+      } else {
+        els.clustersEmpty.classList.add("hidden");
+        for (const c of list) els.clustersBody.appendChild(rowCluster(c));
+      }
+      filterRows();
+
+      els.lastUpdated.textContent = `last update: ${fmt.ts()}`;
+
+      if (!hasShownSkeleton) {
+        hideSkeleton(
+          els.lastUpdated,
+          els.hostCpuLabel, els.hostMemLabel, els.hostMemTotal,
+          els.hostRx, els.hostTx,
+          els.overallMemLabel, els.overallRx, els.overallTx
+        );
+        hideBarSkeleton(els.hostCpuBar, els.hostMemBar, els.clustersCountBar, els.overallMemBar);
+        hasShownSkeleton = true;
+      }
+
+    } catch (e) {
+      console.error(e);
+      els.lastUpdated.textContent = "błąd pobierania danych";
+      hideSkeleton(els.lastUpdated);
+      els.clustersBody.innerHTML = `
+        <tr>
+          <td colspan="5" class="px-4 py-6 text-sm text-red-600 dark:text-red-400">
+            Nie udało się pobrać danych z <code class="font-mono">/api/resources/summary</code>.
+          </td>
         </tr>`;
-    }
-    errorBanner.classList.add('hidden');
+      els.clustersEmpty.classList.add("hidden");
 
-    const response = await fetch(API_URL, { headers: { 'Accept': 'application/json' }});
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+      hideBarSkeleton(els.hostCpuBar, els.hostMemBar, els.overallMemBar, els.clustersCountBar);
+      hideSkeleton(
+        els.hostCpuLabel, els.hostMemLabel, els.hostMemTotal,
+        els.hostRx, els.hostTx,
+        els.overallMemLabel, els.overallRx, els.overallTx
+      );
+      hasShownSkeleton = true;
 
-    allClusters = Array.isArray(data) ? data : [];
-    updateKPIs(allClusters);
-    applyFilters();
-
-    const now = new Date();
-    lastUpdated.textContent = `updated ${fmtTime(now)}`;
-  } catch (err) {
-    console.error("Error loading clusters:", err);
-    errorBanner.classList.remove('hidden');
-    if (!allClusters.length) {
-      tbody.innerHTML = '';
-      emptyState.classList.toggle('hidden', false);
+    } finally {
+      if (showBusy) {
+        els.refreshBtn.disabled = false;
+        els.refreshBtn.classList.remove("opacity-50","cursor-wait");
+      }
+      inFlight = false;
     }
   }
-}
 
-document.addEventListener("DOMContentLoaded", () => {
-  loadClusters();
-  setInterval(() => loadClusters({silent: true}), 5000);
+  els.refreshBtn.addEventListener("click", () => loadData({ showBusy: true }));
+  els.search.addEventListener("input", filterRows);
 
-  filterInput.addEventListener('input', applyFilters);
-  refreshBtn.addEventListener('click', () => loadClusters());
-});
+  setInterval(loadData, 5000);
+  loadData();
 </script>
 {% endblock %}

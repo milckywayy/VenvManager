@@ -1,6 +1,7 @@
 import os
 import random
 
+import psutil
 from flask import blueprints, request, jsonify
 import docker
 import libvirt
@@ -168,3 +169,49 @@ def running_clusters():
         )
 
     return jsonify(result), 200
+
+
+@api_bp.route("/resources/summary", methods=["GET"])
+def resources_summary():
+    host_cpu_percent = psutil.cpu_percent(interval=0.1)
+    vm = psutil.virtual_memory()
+    net = psutil.net_io_counters()
+
+    overall = {"cpu": host_cpu_percent, "memory": 0, "network": {"rx": 0, "tx": 0}}
+    clusters_list = []
+
+    for session_id, cluster in clusters.items():
+        try:
+            res = cluster.get_resource_usage()
+            total = res.get("total", {})
+
+            cluster_id = cluster.db_id
+            cluster_db = ClusterModel.query.filter_by(id=cluster_id).first()
+
+            clusters_list.append(
+                {
+                    "session_id": str(session_id),
+                    "cluster_id": str(cluster_id),
+                    "cluster_name": cluster_db.name,
+                    "resources": total,
+                }
+            )
+
+            overall["memory"] += int(total.get("memory", 0) or 0)
+            overall["network"]["rx"] += int(total.get("network", {}).get("rx", 0) or 0)
+            overall["network"]["tx"] += int(total.get("network", {}).get("tx", 0) or 0)
+        except Exception as e:
+            print(f"Failed to read resources for cluster {session_id}: {e}")
+            continue
+
+    payload = {
+        "host": {
+            "cpu_percent": host_cpu_percent,
+            "memory_percent": float(vm.percent),
+            "memory_total": int(vm.total),
+            "network": {"rx": int(net.bytes_recv), "tx": int(net.bytes_sent)},
+        },
+        "overall": overall,
+        "clusters": clusters_list,
+    }
+    return jsonify(payload), 200
