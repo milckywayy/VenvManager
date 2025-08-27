@@ -28,6 +28,12 @@ def environments():
     )
 
 
+@main_bp.route("/clusters")
+def clusters():
+    existing_clusters = Cluster.query.join(Cluster.environments).all()
+    return render_template("clusters.html", existing_clusters=existing_clusters)
+
+
 @main_bp.route("/base")
 def base():
     return render_template("base.html")

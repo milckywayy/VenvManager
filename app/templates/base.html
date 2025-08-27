@@ -53,10 +53,8 @@
 
           {% set items = [
             {'id': 'dashboard', 'label': 'Dashboard', 'href': url_for('main.index')},
+            {'id': 'clusters', 'label': 'Clusters', 'href': url_for('main.clusters')},
             {'id': 'environments', 'label': 'Environments', 'href': url_for('main.environments')},
-            {'id': 'make_cluster', 'label': 'Make Cluster', 'href': url_for('creator.make_cluster')},
-            {'id': 'make_docker', 'label': 'Make Docker', 'href': url_for('creator.make_docker')},
-            {'id': 'make_vm', 'label': 'Make VM', 'href': url_for('creator.make_vm')}
           ] %}
           <ul class="space-y-1">
             {% for item in items %}

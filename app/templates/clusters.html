@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Klastry{% endblock %}
+
+{% block head_extra %}
+<script>
+  // --- Helpers / DOM utils ---
+  function qs(sel, ctx=document){ return ctx.querySelector(sel) }
+  function qsa(sel, ctx=document){ return Array.from(ctx.querySelectorAll(sel)) }
+  function getRows(){ return qsa('[data-cluster-row]') }
+  function valueOrEmpty(v){ return (v || '').toString().toLowerCase() }
+
+  // --- Toasts ---
+  function toast(msg, type='info') {
+    const holder = document.getElementById('toast-holder');
+    if (!holder) return alert(msg);
+    const el = document.createElement('div');
+    el.className = `pointer-events-auto mb-2 w-full max-w-sm overflow-hidden rounded-xl border p-3 text-sm shadow-lg ring-1 ring-inset transition-all
+      ${type==='success' ? 'bg-emerald-50 border-emerald-200 text-emerald-900 ring-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-900/40 dark:text-emerald-200' : ''}
+      ${type==='error' ? 'bg-rose-50 border-rose-200 text-rose-900 ring-rose-200 dark:bg-rose-900/20 dark:border-rose-900/40 dark:text-rose-200' : ''}
+      ${type==='info' ? 'bg-slate-50 border-slate-200 text-slate-900 ring-slate-200 dark:bg-slate-900/60 dark:border-slate-800 dark:text-slate-100' : ''}`;
+    el.textContent = msg;
+    holder.appendChild(el);
+    setTimeout(()=>{ el.classList.add('opacity-0','translate-y-1'); setTimeout(()=>el.remove(), 250);}, 2500);
+  }
+
+  // --- API wrapper with button state ---
+  async function callApi(url, opts, btn){
+    try {
+      if (btn){ btn.disabled = true; btn.dataset.loading = '1'; }
+      const res = await fetch(url, opts);
+      const data = await res.json().catch(()=>({}));
+      if (!res.ok) throw new Error(data?.error || res.statusText);
+      return data;
+    } finally {
+      if (btn){ delete btn.dataset.loading; btn.disabled = false; }
+    }
+  }
+
+  // --- Cluster actions ---
+  async function startCluster(clusterId, btn){
+    const data = await callApi(`/api/run/${clusterId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: '0' })
+    }, btn);
+    toast(`Start: ${JSON.stringify(data)}`, 'success');
+  }
+
+  async function restartCluster(btn){
+    if (!confirm('Zrestartować klaster? Trwające sesje mogą zostać przerwane.')) return;
+    const data = await callApi(`/api/restart`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: '0' })
+    }, btn);
+    toast(`Restart: ${JSON.stringify(data)}`, 'info');
+  }
+
+  async function stopCluster(btn){
+    if (!confirm('Zatrzymać klaster?')) return;
+    const data = await callApi(`/api/stop`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: '0' })
+    }, btn);
+    toast(`Stop: ${JSON.stringify(data)}`, 'success');
+  }
+
+  // --- Filter & sort ---
+  function filterClusters(){
+    const q = valueOrEmpty(qs('#cluster-search')?.value).trim();
+    getRows().forEach(r => {
+      const text = valueOrEmpty(r.dataset.search);
+      const matchText = !q || text.includes(q);
+      r.style.display = matchText ? '' : 'none';
+      // also toggle its details row
+      const det = qs(`#${r.dataset.detailsId}`);
+      if(det){ det.style.display = matchText && det.dataset.open==='1' ? '' : 'none'; }
+    });
+  }
+
+  function sortClusters(by){
+    const tbody = qs('#cluster-tbody'); if(!tbody) return;
+    const rows = getRows();
+    const dirEl = qs(`#sort-${by}`);
+    const dir = (dirEl?.dataset.dir === 'asc') ? 'desc' : 'asc';
+    if(dirEl){ dirEl.dataset.dir = dir; }
+
+    rows.sort((a,b) => {
+      const av = (a.dataset[by] || '').toLowerCase();
+      const bv = (b.dataset[by] || '').toLowerCase();
+      if(av < bv) return dir==='asc' ? -1 : 1;
+      if(av > bv) return dir==='asc' ?  1 : -1;
+      return 0;
+    });
+
+    // move primary rows and keep each details row directly after its primary row
+    rows.forEach(r => {
+      const det = qs(`#${r.dataset.detailsId}`);
+      tbody.appendChild(r);
+      if(det) tbody.appendChild(det);
+    });
+  }
+
+  // --- Expand/collapse per cluster ---
+  function toggleDetails(btn){
+    const row = btn.closest('[data-cluster-row]'); if(!row) return;
+    const det = qs(`#${row.dataset.detailsId}`); if(!det) return;
+    const open = det.dataset.open === '1';
+    det.dataset.open = open ? '0' : '1';
+    det.style.display = open ? 'none' : '';
+    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const search = qs('#cluster-search'); if(search){ search.addEventListener('input', filterClusters) }
+    filterClusters();
+  })
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 py-8">
+  <div class="mb-6 flex items-end justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-900 dark:text-slate-100">Created Clusters</h1>
+    </div>
+  </div>
+
+  {% if existing_clusters|length == 0 %}
+    <div class="rounded-xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div class="mx-auto mb-3 h-10 w-10 rounded-full ring-1 ring-inset ring-slate-200 dark:ring-slate-700 grid place-items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-500" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h4l1 1h6a1 1 0 011 1v3H3V4z"/><path fill-rule="evenodd" d="M3 9h14v6a2 2 0 01-2 2H5a2 2 0 01-2-2V9zm3 2a1 1 0 100 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+      </div>
+      <h2 class="text-lg font-medium text-slate-900 dark:text-slate-100">Brak klastrów</h2>
+      <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Create first cluster.</p>
+    </div>
+  {% else %}
+    <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-2 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-300">
+        <input id="cluster-search" type="text" placeholder="Filter clusters…"
+               class="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder-slate-500"/>
+        <div class="flex items-center gap-1">
+          Sort by:
+          <button id="sort-name"  type="button" data-dir="asc" onclick="sortClusters('name')"  class="rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800">Name</button>
+          <button id="sort-id"    type="button" data-dir="asc" onclick="sortClusters('id')"    class="rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-800">ID</button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+          <thead class="bg-slate-50 dark:bg-slate-800/60">
+            <tr>
+              <th class="w-12 px-2 py-3"></th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Name</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">ID</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Environments</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody id="cluster-tbody" class="divide-y divide-slate-200 dark:divide-slate-800">
+            {% for cluster in existing_clusters %}
+              {# Precompute searchable text from envs/images/ports #}
+              {% set envs_txt   = (cluster.environments | map(attribute='name') | list | join(' ')) if cluster.environments else '' %}
+              {% set images_txt = (cluster.environments | map(attribute='docker') | map(attribute='image') | select('string') | list | join(' ')) if cluster.environments else '' %}
+              {% set ports_txt  = (cluster.environments | map(attribute='ports') | list | join(' ')) if cluster.environments else '' %}
+              {% set details_id = 'envs-' ~ cluster.id %}
+
+              <!-- Primary row -->
+              <tr data-cluster-row
+                  data-id="{{ cluster.id }}"
+                  data-name="{{ cluster.name }}"
+                  data-details-id="{{ details_id }}"
+                  data-search="{{ (cluster.name ~ ' ' ~ cluster.id ~ ' ' ~ envs_txt ~ ' ' ~ images_txt ~ ' ' ~ ports_txt) | lower }}"
+                  class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <td class="px-2 py-3 text-center align-middle">
+                  <button type="button" aria-expanded="false" aria-controls="{{ details_id }}"
+                          class="group inline-flex h-7 w-7 items-center justify-center rounded-md ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:ring-slate-700 dark:hover:bg-slate-800"
+                          onclick="toggleDetails(this)">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform group-aria-expanded:rotate-90" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="sr-only">Show environments</span>
+                  </button>
+                </td>
+                <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{{ cluster.name }}</td>
+                <td class="px-4 py-3 font-mono text-xs">{{ cluster.id }}</td>
+                <td class="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">{{ cluster.environments|length }} environments</td>
+                <td class="px-4 py-3">
+                  <div class="flex justify-end gap-2">
+                    <button onclick="startCluster({{ cluster.id }}, this)"
+                            class="rounded bg-emerald-600 px-3 py-1.5 text-sm text-white ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500">Start</button>
+                    <button onclick="stopCluster(this)"
+                            class="rounded bg-slate-200 px-3 py-1.5 text-sm text-slate-800 ring-1 ring-inset ring-slate-300 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700">Stop</button>
+                    <button onclick="restartCluster(this)"
+                            class="rounded bg-amber-500 px-3 py-1.5 text-sm text-white ring-1 ring-inset ring-amber-400/60 hover:bg-amber-400">Restart</button>
+                    <form method="post" action="{{ url_for('creator.delete_cluster', cluster_id=cluster.id, callback='main.index') }}"
+                          onsubmit="return confirm('Na pewno usunąć klaster „{{ cluster.name }}”? Tej operacji nie można cofnąć.');" style="display:inline">
+                      <button type="submit" class="rounded bg-rose-600 px-3 py-1.5 text-sm text-white ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Details row (environments) -->
+              <tr id="{{ details_id }}" data-open="0" style="display:none">
+                <td colspan="5" class="bg-slate-50/40 px-4 py-4 dark:bg-slate-800/40">
+                  {% if not cluster.environments %}
+                    <div class="text-sm text-slate-500 dark:text-slate-400">This cluster has no environments.</div>
+                  {% else %}
+                    <div class="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+                      <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800" aria-label="Lista środowisk klastra">
+                          <thead class="bg-slate-100 dark:bg-slate-800/60">
+                            <tr>
+                              <th class="px-3 py-2 text-left font-semibold text-slate-600 dark:text-slate-300">Name</th>
+                              <th class="px-3 py-2 text-left font-semibold text-slate-600 dark:text-slate-300">Type</th>
+                              <th class="px-3 py-2 text-left font-semibold text-slate-600 dark:text-slate-300">Image</th>
+                              <th class="px-3 py-2 text-left font-semibold text-slate-600 dark:text-slate-300">Ports</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                            {% for env in cluster.environments %}
+                              {% set _type  = env.docker and 'docker' or (env.vm and 'vm' or 'none') %}
+                              {% set _image = env.docker and env.docker.image or (env.vm and env.vm.base_image_path.split('/')[-1] or '') %}
+                              <tr class="hover:bg-white dark:hover:bg-slate-900/40">
+                                <td class="px-3 py-2 font-medium text-slate-900 dark:text-slate-100">{{ env.name }}</td>
+                                <td class="px-3 py-2">
+                                  {% if env.docker %}
+                                  <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-200 dark:bg-sky-900/20 dark:text-sky-300 dark:ring-sky-800">
+                                    <!-- Docker icon -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                      <path d="M3 14c0 3.866 3.134 7 7 7h5a6 6 0 006-6v-1H3zM4 13h16v-2H4v2zm5-3h3V7H9v3zm4 0h3V7h-3v3zM8 10H5V7h3v3z"/>
+                                    </svg>
+                                      Docker
+                                    </span>
+                                  {% elif env.vm %}
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-200 dark:bg-violet-900/20 dark:text-violet-300 dark:ring-violet-800">
+                                      <!-- VM icon -->
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M4 5a2 2 0 012-2h12a2 2 0 012 2v9a2 2 0 01-2 2h-5l2 3H9l2-3H6a2 2 0 01-2-2V5z"/>
+                                      </svg>
+                                      VM
+                                    </span>
+                                  {% endif %}
+                                </td>
+                                <td class="px-3 py-2 font-mono text-xs">{{ _image }}</td>
+                                <td class="px-3 py-2">
+                                  {% if env.ports %}
+                                    <div class="flex flex-wrap gap-1.5">
+                                      {% for p in env.ports %}
+                                        <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 ring-1 ring-inset ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">{{ p }}</span>
+                                      {% endfor %}
+                                    </div>
+                                  {% else %}
+                                    <span class="text-slate-400">—</span>
+                                  {% endif %}
+                                </td>
+                              </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<div class="fixed bottom-24 right-12 z-40">
+  <button id="fabBtn"
+          type="button"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="fabMenu"
+            onclick="window.location='{{ url_for('creator.make_cluster') }}'"
+          class="group inline-flex items-center justify-center rounded-full shadow-lg ring-1 ring-inset ring-slate-300 bg-blue-600 text-white w-16 h-16 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-600/60 active:translate-y-px dark:ring-slate-700">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transition-transform group-aria-expanded:rotate-45" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" d="M12 5v14M5 12h14"/>
+    </svg>
+    <span class="sr-only">Add cluster</span>
+  </button>
+</div>
+{% endblock %}
