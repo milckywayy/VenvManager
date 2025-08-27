@@ -164,7 +164,7 @@
                                 (no backend attached)
                             {% endif %}
                             {% if env.ports and env.ports|length > 0 %}
-                                · Ports: {{ env.ports | map(attribute='published') | list }}
+                                · Ports: {{ env.ports | list }}
                             {% endif %}
                         </div>
                     </label>

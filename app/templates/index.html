@@ -210,7 +210,7 @@
                         {% if env.ports %}
                           <div class="ports">
                             {% for p in env.ports %}
-                              <span class="chip">{{ p.internal }} → {{ p.published }}</span>
+                              <span class="chip">{{ p }}</span>
                             {% endfor %}
                           </div>
                         {% else %}

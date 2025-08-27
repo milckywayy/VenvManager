@@ -1,17 +1,24 @@
 import os
+import random
+
 from flask import blueprints, request, jsonify
 import docker
 import libvirt
 
 from app.models import Cluster as ClusterModel
 from app.runtime import Cluster, DockerEnvironment, VMEnvironment
-from app.utils.split_ports import split_ports
 
 api_bp = blueprints.Blueprint("api", __name__, url_prefix="/api")
 
 docker_client = docker.from_env()
 libvirt_client = libvirt.open(os.getenv("LIBVIRT_CLIENT"))
 clusters = {}
+available_ports = [
+    port
+    for port in range(
+        int(os.getenv("ENV_PORTS_BEGIN")), int(os.getenv("ENV_PORTS_END"))
+    )
+]
 
 
 @api_bp.route("/run/<int:cluster_id>", methods=["POST"])
@@ -31,7 +38,12 @@ def run(cluster_id: int):
     cluster = Cluster(name=f"{session_id}-{cluster_db.name}", cluster_id=cluster_db.id)
 
     for env_db in environments_db:
-        internal_ports, published_ports = split_ports(env_db.ports)
+        internal_ports = env_db.ports
+        published_ports = []
+        for _ in internal_ports:
+            if not available_ports:
+                return jsonify({"error": "No available ports"}), 500
+            published_ports.append(random.choice(available_ports))
 
         if env_db.docker:
             cluster.add_environment(
@@ -113,6 +125,13 @@ def remove():
     cluster = clusters.get(session_id)
     if not cluster:
         return jsonify({"error": "Cluster not found"}), 404
+
+    for env in cluster.environments:
+        published_ports = []
+        for port in env.published_ports:
+            if port in published_ports:
+                available_ports.append(port)
+                published_ports.remove(port)
 
     cluster.destroy()
 

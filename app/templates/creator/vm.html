@@ -154,8 +154,7 @@
         const row = document.createElement('div');
         row.className = 'port-row';
         row.innerHTML = `
-            <input type="number" name="ports[][internal]" placeholder="Internal port" min="1" max="65535" required>
-            <input type="number" name="ports[][published]" placeholder="Published port" min="1" max="65535" required>
+            <input type="number" name="ports" placeholder="Internal port" min="1" max="65535" required>
             <button type="button" class="remove-btn" onclick="removePortRow(this)">Remove</button>
         `;
         container.appendChild(row);
@@ -232,7 +231,7 @@
                     {% if env.ports %}
                         <ul class="ports-list">
                             {% for p in env.ports %}
-                                <li>{{ p.internal }} → {{ p.published }}</li>
+                                <li>{{ p }}</li>
                             {% endfor %}
                         </ul>
                     {% else %}

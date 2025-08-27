@@ -24,21 +24,15 @@ def make_docker():
     if request.method == "POST":
         name = request.form.get("name")
         docker_image = request.form.get("docker_image")
-        internal_ports = request.form.getlist("ports[][internal]")
-        published_ports = request.form.getlist("ports[][published]")
+        internal_ports = request.form.getlist("ports")
         access_info = request.form.get("access_info")
 
-        port_mappings = []
-        for internal, published in zip(internal_ports, published_ports):
-            if internal and published:
-                port_mappings.append(
-                    {"internal": int(internal), "published": int(published)}
-                )
+        ports = [int(p) for p in internal_ports if p.strip()]
 
         create_docker_env(
             name=name,
             image=docker_image,
-            ports=port_mappings,
+            ports=ports,
             access_info=access_info,
         )
 
@@ -67,22 +61,16 @@ def make_vm():
         name = request.form.get("name")
         base_image_path = request.form.get("base_image_path")
         template = request.form.get("template")
-        internal_ports = request.form.getlist("ports[][internal]")
-        published_ports = request.form.getlist("ports[][published]")
+        internal_ports = request.form.getlist("ports")
         access_info = request.form.get("access_info")
 
-        port_mappings = []
-        for internal, published in zip(internal_ports, published_ports):
-            if internal and published:
-                port_mappings.append(
-                    {"internal": int(internal), "published": int(published)}
-                )
+        ports = [int(p) for p in internal_ports if p.strip()]
 
         create_vm_env(
             name=name,
             template=template,
             base_image_path=base_image_path,
-            ports=port_mappings,
+            ports=ports,
             access_info=access_info,
         )
 

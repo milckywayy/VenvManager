@@ -68,20 +68,14 @@ class Environment(db.Model):
         if value is None:
             return []
         if not isinstance(value, (list, tuple)):
-            raise ValueError("ports must be a list of {internal, published} objects")
+            raise ValueError("ports must be a list of integers")
         cleaned = []
         for p in value:
-            if not isinstance(p, dict):
-                raise ValueError(
-                    "each port entry must be a dict with 'internal' and 'published'"
-                )
-            internal = p.get("internal")
-            published = p.get("published")
-            if not (isinstance(internal, int) and isinstance(published, int)):
-                raise ValueError("ports must be integers")
-            if not (1 <= internal <= 65535 and 1 <= published <= 65535):
-                raise ValueError(f"invalid port mapping: {p}")
-            cleaned.append({"internal": internal, "published": published})
+            if not isinstance(p, int):
+                raise ValueError("each port must be an integer")
+            if not (1 <= p <= 65535):
+                raise ValueError(f"invalid port number: {p}")
+            cleaned.append(p)
         return cleaned
 
 
