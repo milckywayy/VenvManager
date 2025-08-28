@@ -123,7 +123,7 @@
         },
         btn
       );
-      alert(JSON.stringify(data));
+      console.log(JSON.stringify(data, null, 2));
     } catch (err){
       row.dataset.status = 'stopped';
       runningClusterId = null;
@@ -133,7 +133,6 @@
   }
 
   async function restartCluster(btn){
-    if (!confirm('Restart cluster?')) return;
     try {
       await callApi(
         `/api/restart`,
@@ -150,7 +149,6 @@
   }
 
   async function stopCluster(btn){
-    if (!confirm('Stop cluster?')) return;
     const row = btn.closest('[data-cluster-row]');
     try {
       await callApi(
