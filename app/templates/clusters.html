@@ -45,6 +45,32 @@
   function labelOf(btn){ return btn.textContent.trim().toLowerCase() }
 
   let runningClusterId = null;
+  const sessionId = '65535';
+
+  async function waitUntilRunning() {
+    return new Promise((resolve, reject) => {
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch("/api/status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sessionId })
+          });
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          const data = await res.json();
+          const statuses = Object.values(data.statuses);
+          const allRunning = statuses.length > 0 && statuses.every(s => s === "running");
+          if (allRunning) {
+            clearInterval(interval);
+            resolve(data);
+          }
+        } catch (err) {
+          clearInterval(interval);
+          reject(err);
+        }
+      }, 1000);
+    });
+  }
 
   function setRowBusy(row, busy){
     if(!row) return;
@@ -119,11 +145,22 @@
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: '65535' })
+          body: JSON.stringify({ session_id: sessionId })
         },
         btn
       );
-      console.log(JSON.stringify(data, null, 2));
+
+      await waitUntilRunning(sessionId);
+
+      const res = await fetch("{{ url_for('api.access_info') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId })
+      });
+
+      const access = await res.json();
+      console.log(JSON.stringify(access, null, 4));
+
     } catch (err){
       row.dataset.status = 'stopped';
       runningClusterId = null;
@@ -139,7 +176,7 @@
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: '65535' })
+          body: JSON.stringify({ session_id: sessionId })
         },
         btn
       );
@@ -156,7 +193,7 @@
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: '65535' })
+          body: JSON.stringify({ session_id: sessionId })
         },
         btn
       );

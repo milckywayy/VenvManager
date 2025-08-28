@@ -55,8 +55,6 @@ class VMEnvironment(Environment):
     def _on_started(self):
         logging.debug(f"VM {self.name} booted successfully")
 
-        self.ip = self._get_ip()
-
         for internal_port, published_port in zip(
             self.internal_ports, self.published_ports
         ):
@@ -176,6 +174,9 @@ class VMEnvironment(Environment):
 
         if self._get_ip() is None:
             return EnvStatus.BOOTING
+
+        if self.ip is None:
+            self.ip = self._get_ip()
 
         state, _ = self.domain.state()
 

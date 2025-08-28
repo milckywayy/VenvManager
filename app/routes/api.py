@@ -97,13 +97,28 @@ def status():
     if not cluster:
         return jsonify({"error": "Cluster not found"}), 404
 
-    env_statuses = cluster.status()  # noqa: F841
+    env_statuses = cluster.status()
+    result = {}
+    for name, st in env_statuses.items():
+        result[name] = st.value
 
-    return jsonify(
-        {
-            "cluster_id": str(cluster.db_id),
-        }
-    ), 200
+    return jsonify({"cluster_id": str(cluster.db_id), "statuses": result}), 200
+
+
+@api_bp.route("/access_info", methods=["POST"])
+def access_info():
+    data = request.json
+    session_id = data["session_id"]
+
+    if not session_id:
+        return jsonify({"error": "session_id is required"}), 400
+
+    cluster = clusters.get(session_id)
+    if not cluster:
+        return jsonify({"error": "Cluster not found"}), 404
+
+    info = cluster.get_access_info()
+    return jsonify({"access_info": info}), 200
 
 
 @api_bp.route("/restart", methods=["POST"])
