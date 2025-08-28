@@ -1,30 +1,87 @@
 <!doctype html>
-<html lang="pl">
+<html class="scroll-smooth" lang="pl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
   <title>{% block title %}{% endblock %} - VenvManager</title>
+
+  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'Roboto', 'Arial', 'sans-serif'] },
+          colors: {
+            brand: {
+              50:  '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              500: '#6366f1',
+              600: '#4f46e5',
+            }
+          },
+          boxShadow: {
+            'header': '0 8px 30px rgba(0,0,0,0.06)',
+            'soft': '0 6px 18px rgba(0,0,0,0.08)',
+          }
+        }
+      },
+      darkMode: 'class'
+    }
+  </script>
+
+  <link href="https://fonts.googleapis.com" rel="preconnect" />
+  <link crossorigin href="https://fonts.gstatic.com" rel="preconnect" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
   <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" rel="stylesheet">
+
+  <style>
+    ::-webkit-scrollbar{ width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb{
+      background: linear-gradient(180deg, rgba(99,102,241,.25), rgba(14,165,233,.25));
+      border-radius: 9999px; border: 2px solid transparent; background-clip: padding-box;
+    }
+    ::-webkit-scrollbar-track{ background: transparent; }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
+
   {% block head_extra %}{% endblock %}
+  <script>
+    (function(){
+      const ls = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (ls === 'dark' || (!ls && prefersDark)) document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
+    })();
+  </script>
 </head>
-<body class="min-h-screen bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100">
+
+<body class="min-h-screen bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100 font-sans">
+
+  <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10">
+    <div class="absolute inset-0 bg-[radial-gradient(60%_40%_at_50%_0%,rgba(99,102,241,0.08),transparent_60%)] dark:bg-[radial-gradient(60%_40%_at_50%_0%,rgba(99,102,241,0.12),transparent_60%)]"></div>
+  </div>
 
   <div class="min-h-screen flex flex-col">
-    <!-- Banner -->
-    <header class="sticky top-0 z-40 border-b border-gray-200/70 dark:border-gray-800/70 backdrop-blur bg-white/80 dark:bg-gray-900/70">
-      <div class="mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
+    <!-- Header -->
+    <header class="sticky top-0 z-40 border-b border-gray-200/70 dark:border-gray-800/70 backdrop-blur bg-white/70 dark:bg-gray-900/60 shadow-header">
+      <div class="px-4 sm:px-6 h-14 flex items-center gap-3">
         <!-- Mobile: open sidebar -->
-        <button id="openSidebar" class="md:hidden inline-flex items-center justify-center rounded-md p-2 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
-          <!-- Icon -->
-          <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <button aria-controls="sidebar"
+          aria-expanded="false"
+          aria-label="Otwórz nawigację" class="md:hidden inline-flex items-center justify-center rounded-lg p-2 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" id="openSidebar">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
 
         <!-- Logo + name -->
-        <a href="{{ url_for('main.index') }}" class="flex items-center gap-2 font-semibold">
-          <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-sky-400 text-white">✦</span>
-          <span>VenvManager</span>
+        <a class="flex items-center gap-2 font-semibold group" href="{{ url_for('main.index') }}">
+          <span class="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-sky-400 text-white shadow-soft ring-1 ring-white/30 dark:ring-white/10 transition-transform group-hover:scale-105">✦</span>
+          <span class="tracking-tight">VenvManager</span>
         </a>
 
         <div class="ms-auto flex items-center gap-2">
@@ -35,19 +92,29 @@
 
     <div class="flex-1 flex">
       <!-- Mobile overlay -->
-      <div id="backdrop" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden md:hidden" aria-hidden="true"></div>
+      <div aria-hidden="true" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden md:hidden" id="backdrop"></div>
 
       <!-- Sidebar -->
-      <aside id="sidebar"
-             class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full md:translate-x-0 md:relative md:z-0 md:flex md:flex-col md:w-64
-                    transition-transform ease-in-out duration-200 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
+      <aside class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full
+                    md:translate-x-0 md:relative md:z-0 md:flex md:flex-col md:w-64
+                    transition-transform ease-in-out duration-200
+                    bg-white/90 dark:bg-gray-900/90 backdrop-blur
+                    border-r border-gray-200/80 dark:border-gray-800/80"
+             id="sidebar">
+
+        <!-- Mobile header -->
         <div class="h-14 px-4 flex items-center justify-between md:hidden border-b border-gray-200 dark:border-gray-800">
-          <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Navigation</span>
-          <button id="closeSidebar" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Close navigation" aria-controls="sidebar" aria-expanded="true">
-            <svg viewBox="0 0 24 24" fill="none" class="w-5 h-5" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Nawigacja</span>
+          <button aria-controls="sidebar"
+                  aria-expanded="true"
+                  aria-label="Zamknij nawigację" class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" id="closeSidebar">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </button>
         </div>
 
+        <!-- Navigation -->
         <nav class="flex-1 overflow-y-auto p-3">
           <div class="text-xs px-2 pb-2 uppercase tracking-wide text-gray-500 dark:text-gray-400">Menu</div>
 
@@ -56,15 +123,32 @@
             {'id': 'clusters', 'label': 'Clusters', 'href': url_for('main.clusters')},
             {'id': 'environments', 'label': 'Environments', 'href': url_for('main.environments')},
           ] %}
+
           <ul class="space-y-1">
             {% for item in items %}
+              {% set active = (item.id == active_page) %}
               <li>
-                <a href="{{ item.href }}"
-                   class="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium
-                          hover:bg-gray-100 dark:hover:bg-gray-800
-                          {% if item.id == active_page %} bg-gray-100 dark:bg-gray-800 {% endif %}">
-                  <span class="inline-flex h-5 w-5 items-center justify-center rounded ring-1 ring-gray-200 dark:ring-gray-700 text-[11px]">{{ loop.index }}</span>
-                  <span>{{ item.label }}</span>
+                <a class="group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium
+                          border border-transparent
+                          hover:bg-gray-100/70 dark:hover:bg-gray-800/70
+                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500
+                          {% if active %} bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-soft {% endif %}"
+                   href="{{ item.href }}">
+                  <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg ring-1 ring-gray-200 dark:ring-gray-700
+                               bg-white/70 dark:bg-gray-900/70 group-hover:scale-105 transition-transform">
+                    {% if item.id == 'dashboard' %}
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 12l9-9 9 9M4 10v10a1 1 0 001 1h4m6 0h4a1 1 0 001-1V10M10 21v-6h4v6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {% elif item.id == 'clusters' %}
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 7h7v7H3zM14 7h7v7h-7zM8.5 17.5h7v3h-7z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {% else %}
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 13V7a2 2 0 00-2-2H7a2 2 0 00-2 2v6m14 0a2 2 0 01-2 2H7a2 2 0 01-2-2m14 0v4a2 2 0 01-2 2H7a2 2 0 01-2-2v-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {% endif %}
+                  </span>
+                  <span class="truncate">{{ item.label }}</span>
+
+                  {% if active %}
+                    <span class="absolute right-3 h-5 w-1 rounded-full bg-gradient-to-b from-brand-500 to-sky-400"></span>
+                  {% endif %}
                 </a>
               </li>
             {% endfor %}
@@ -75,8 +159,8 @@
       </aside>
 
       <!-- Main -->
-      <main id="content" class="flex-1 min-w-0">
-        <div class="mx-auto p-6">
+      <main class="flex-1 min-w-0" id="content">
+        <div class="mx-auto max-w-7xl p-6">
           {% block content %}
           <h1 class="text-2xl font-semibold tracking-tight">Hello 👋</h1>
           {% endblock %}
@@ -85,9 +169,10 @@
     </div>
 
     <!-- Footer -->
-    <footer class="border-t border-gray-200 dark:border-gray-800">
-      <div class="mx-auto px-4 sm:px-6 py-4 text-sm text-gray-600 dark:text-gray-400 flex items-center">
+    <footer class="border-t border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur">
+      <div class="px-4 sm:px-6 py-4 text-sm text-gray-600 dark:text-gray-400 flex items-center justify-between">
         <span>by milckywayy</span>
+        <span class="text-xs">© 2025 VenvManager</span>
       </div>
     </footer>
   </div>
@@ -114,14 +199,20 @@
       openBtn?.addEventListener('click', open);
       closeBtn?.addEventListener('click', close);
       backdrop?.addEventListener('click', close);
-
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') close();
-      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 
       const mql = window.matchMedia('(min-width: 768px)');
       function handle(mq){ mq.matches ? backdrop.classList.add('hidden') : close(); }
       handle(mql); mql.addEventListener('change', handle);
+
+      const toastBg = (cat) => {
+        switch ((cat || 'info').toLowerCase()) {
+          case 'success': return "linear-gradient(90deg,#10b981,#34d399)";
+          case 'warning': return "linear-gradient(90deg,#f59e0b,#fbbf24)";
+          case 'error':   return "linear-gradient(90deg,#ef4444,#f43f5e)";
+          default:        return "linear-gradient(90deg,#0ea5e9,#22d3ee)";
+        }
+      };
 
       {% for category, msg in get_flashed_messages(with_categories=true) or [] %}
         (function(){
