@@ -55,11 +55,13 @@ class VMEnvironment(Environment):
     def _on_started(self):
         logging.debug(f"VM {self.name} booted successfully")
 
+        self.ip = self._get_ip()
+
         for internal_port, published_port in zip(
             self.internal_ports, self.published_ports
         ):
             self.forwarded_ports.append(
-                forward_port(self._get_ip(), internal_port, published_port)
+                forward_port(self.ip, internal_port, published_port)
             )
 
     def _render_xml(self):

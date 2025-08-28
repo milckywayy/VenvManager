@@ -40,8 +40,22 @@ class DockerEnvironment(Environment):
         self.container = None
         logging.info(f"Created docker environment {name}")
 
+    def _get_container_ip(self) -> str | None:
+        if self.container is None:
+            return None
+        self.container.reload()
+
+        nets = self.container.attrs.get("NetworkSettings", {}).get("Networks", {})
+        net_name = self.docker_network.name
+        if net_name in nets:
+            return nets[net_name].get("IPAddress") or None  # IPv4
+        for data in nets.values():
+            if data.get("IPAddress"):
+                return data["IPAddress"]
+        return None
+
     def _on_started(self):
-        pass
+        self.ip = self._get_container_ip() or "unknown"
 
     def start(self):
         try:

@@ -57,7 +57,7 @@ class Cluster:
         return self._all_env_running()
 
     def get_access_info(self) -> dict:
-        return {env.name: env.get_access_info() for env in self.environments}
+        return {env.display_name: env.get_access_info() for env in self.environments}
 
     def get_resource_usage(self) -> dict:
         total = {"memory": 0, "network": {"rx": 0, "tx": 0}}
