@@ -46,7 +46,7 @@ class VMEnvironment(Environment):
         self.network_name = network_name
         self.forwarded_ports = []
 
-        self.image_path = f"{os.getenv('VM_OVERLAYS_PATH')}/{name}.qcow2"
+        self.image_path = f"{os.getenv('VM_OVERLAYS_PATH')}{name}.qcow2"
         create_overlay(self.base_image_path, self.image_path)
 
         self.domain = None
