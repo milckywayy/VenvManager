@@ -9,17 +9,26 @@ default:
 check-env:
     python3 app/load_env.py
 
-run:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    trap 'docker compose -f {{COMPOSE_FILE}} down' EXIT
+up:
+    -screen -S dev_app -X quit
     docker compose up -d --remove-orphans
-    python3 run.py
+    screen -dmS dev_app bash -c 'exec python3 run.py'
+
+    @echo "Application started"
+
+down:
+    -screen -S dev_app -X quit
+    docker compose down
+    @echo "Application and containers have been stopped"
+
+logs:
+    screen -S dev_app -X hardcopy -h /tmp/dev_app.log
+    cat /tmp/dev_app.log
 
 prune:
-    @docker compose down -v
+    docker compose down -v
 
 db +args:
-    @docker compose up -d --remove-orphans
+    docker compose up -d --remove-orphans
     flask db {{args}}
-    @docker compose down
+    docker compose down
