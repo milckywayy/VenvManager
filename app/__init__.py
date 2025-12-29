@@ -25,13 +25,13 @@ def _build_db_url() -> str:
     return f"postgresql+psycopg2://{user}:{pwd}@{host}:{port}/{name}"
 
 
-def create_app():
+def create_app() -> Flask:
     try:
         load_env()
 
     except EnvironmentError as e:
         logging.error(e)
-        exit(1)
+        raise RuntimeError("Environment not configured") from e
 
     app = Flask(__name__)
     app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
@@ -49,8 +49,22 @@ def create_app():
         from app.models import environment  # noqa: F401
     migrate.init_app(app, db)
 
+    return app
+
+
+def create_app_admin():
+    app = create_app()
+
     app.register_blueprint(main_bp)
     app.register_blueprint(creator_bp)
+    app.register_blueprint(api_bp)
+
+    return app
+
+
+def create_app_api():
+    app = create_app()
+
     app.register_blueprint(api_bp)
 
     return app
