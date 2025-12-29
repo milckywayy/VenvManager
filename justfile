@@ -10,19 +10,19 @@ check-env:
     python3 app/load_env.py
 
 up:
-    -screen -S dev_app -X quit
+    -screen -S vm_manager_dev -X quit
     docker compose up -d --remove-orphans
-    screen -dmS dev_app bash -c 'exec python3 run.py'
+    screen -dmS vm_manager_dev bash -c 'exec python3 run.py'
 
     @echo "Application started"
 
 down:
-    -screen -S dev_app -X quit
+    -screen -S vm_manager_dev -X quit
     docker compose down
     @echo "Application and containers have been stopped"
 
 logs:
-    screen -S dev_app -X hardcopy -h /tmp/dev_app.log
+    screen -S vm_manager_dev -X hardcopy -h /tmp/dev_app.log
     cat /tmp/dev_app.log
 
 prune:

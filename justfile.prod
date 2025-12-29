@@ -9,12 +9,22 @@ default:
 check-env:
     python3 app/load_env.py
 
-run:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    trap 'docker compose -f {{COMPOSE_FILE}} down' EXIT
+up:
+    -screen -S vm_manager_prod -X quit
     docker compose up -d --remove-orphans
-    gunicorn "app:create_app()" --bind 0.0.0.0:8000 --workers 4
+    screen -dmS vm_manager_prod bash -c 'exec gunicorn "app:create_app()" --bind 0.0.0.0:8000 --workers 4'
+
+    @echo "Production application started"
+
+down:
+    -screen -S vm_manager_prod -X quit
+    docker compose down
+    -pkill -f '[g]unicorn.*app:create_app' || true
+    @echo "Production application and containers have been stopped"
+
+logs:
+    screen -S vm_manager_prod -X hardcopy -h /tmp/prod_app.log
+    cat /tmp/prod_app.log
 
 prune:
     @docker compose down -v
