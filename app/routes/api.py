@@ -29,10 +29,24 @@ def _get_session_id():
 def run(cluster_id: int):
     try:
         session_id = _get_session_id()
-        result = _service.run(cluster_id, session_id)
+
+        payload = request.get_json(silent=True) or {}
+        variables = payload.get("variables", {})
+
+        if variables is None:
+            variables = {}
+        if not isinstance(variables, dict):
+            raise ValidationError("'variables' must be an object (dict).")
+
+        for k, v in variables.items():
+            if not isinstance(k, str) or not isinstance(v, str):
+                raise ValidationError("All variables must be string->string.")
+
+        result = _service.run(cluster_id, variables, session_id)
         return jsonify(
             {"status": result.status, "access_info": result.access_info}
         ), 200
+
     except ValidationError as e:
         return jsonify({"error": str(e)}), 400
     except NotFoundError as e:

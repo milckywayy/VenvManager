@@ -32,7 +32,7 @@ class VMEnvironment(Environment):
         base_image_name: str,
         internal_ports: list,
         published_ports: list,
-        access_info: list,
+        access_info: str,
         network_name: str,
     ):
         super().__init__(

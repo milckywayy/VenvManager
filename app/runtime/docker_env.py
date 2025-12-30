@@ -25,17 +25,17 @@ class DockerEnvironment(Environment):
         image: str,
         internal_ports: list,
         published_ports: list,
+        variables: dict[str, str],
         access_info: str,
         docker_network: Network,
-        cluster_id: int,
     ):
         super().__init__(
             name, display_name, internal_ports, published_ports, access_info
         )
         self.docker_client = docker_client
         self.image = image
+        self.variables = variables
         self.docker_network = docker_network
-        self.cluster_id = cluster_id
 
         self.container = None
         logging.info(f"Created docker environment {name}")
@@ -70,7 +70,7 @@ class DockerEnvironment(Environment):
                 },
                 network=self.docker_network.name,
                 name=self.name,
-                environment={},
+                environment=self.variables,
             )
             logging.info(f"Started docker environment {self.name}")
 

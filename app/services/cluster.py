@@ -39,7 +39,9 @@ class ClusterService:
         self.docker_client = docker_client
         self.libvirt_client = libvirt_client
 
-    def run(self, cluster_db_id: int, session_id: str) -> RunResult:
+    def run(
+        self, cluster_db_id: int, variables: dict[str, str], session_id: str
+    ) -> RunResult:
         if not session_id:
             raise ValidationError("session_id is required")
 
@@ -68,9 +70,9 @@ class ClusterService:
                         image=env_db.docker.image,
                         internal_ports=internal_ports,
                         published_ports=published_ports,
+                        variables=variables,
                         access_info=env_db.access_info,
                         docker_network=cluster.docker_network,
-                        cluster_id=cluster_db_id,
                     )
                 )
             elif env_db.vm:
