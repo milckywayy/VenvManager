@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import os
+import threading
+import time
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, List
-
 import psutil
 
 from app.models import Cluster as ClusterModel
@@ -38,6 +41,26 @@ class ClusterService:
         self.port_pool = port_pool
         self.docker_client = docker_client
         self.libvirt_client = libvirt_client
+
+        self.ttl_seconds = int(os.getenv("CLUSTER_TTL_SECONDS"))
+        self._ttl_check_interval = int(os.getenv("CLUSTER_TTL_POLL_SECONDS"))
+        threading.Thread(target=self._cleanup_loop, daemon=True).start()
+
+    def _cleanup_loop(self):
+        while True:
+            for session_id in self.registry.expired_sessions():
+                try:
+                    self.stop(session_id)
+                except NotFoundError:
+                    pass
+            time.sleep(self._ttl_check_interval)
+
+    @staticmethod
+    def _ttl_remaining_seconds(
+        expires_at: datetime, now: datetime | None = None
+    ) -> int:
+        now = now or datetime.now()
+        return max(0, int((expires_at - now).total_seconds()))
 
     def run(
         self, cluster_db_id: int, variables: dict[str, str], session_id: str
@@ -90,7 +113,7 @@ class ClusterService:
                     )
                 )
 
-        self.registry.set(session_id, cluster)
+        self.registry.set(session_id, cluster, ttl_seconds=self.ttl_seconds)
         cluster.start()
 
         return RunResult(status="started", access_info=cluster.get_access_info())
@@ -99,13 +122,48 @@ class ClusterService:
         if not session_id:
             raise ValidationError("session_id is required")
 
-        cluster = self.registry.get(session_id)
-        if not cluster:
+        entry = self.registry.get_entry(session_id)
+        if not entry:
             raise NotFoundError("Cluster not found")
+
+        cluster, _, expires_at = entry
+        ttl_remaining = self._ttl_remaining_seconds(expires_at)
 
         env_statuses = cluster.status()
         result = {name: st.value for name, st in env_statuses.items()}
-        return {"cluster_id": str(cluster.db_id), "statuses": result}
+        return {
+            "cluster_id": str(cluster.db_id),
+            "ttl_remaining_seconds": ttl_remaining,
+            "statuses": result,
+        }
+
+    def extend_ttl(self, session_id: str) -> None:
+        if not session_id:
+            raise ValidationError("session_id is required")
+
+        entry = self.registry.get_entry(session_id)
+        if not entry:
+            raise NotFoundError("Cluster not found")
+
+        cluster, created_at, expires_at = entry
+
+        allow_extend_after = int(os.getenv("CLUSTER_TTL_ALLOW_EXTEND_TIME_SECONDS"))
+        extend_by = int(os.getenv("CLUSTER_TTL_EXTEND_SECONDS"))
+
+        if extend_by <= 0:
+            return
+
+        now = datetime.now()
+
+        if allow_extend_after > 0:
+            elapsed = int((now - created_at).total_seconds())
+            if elapsed < allow_extend_after:
+                raise ValidationError(
+                    f"TTL can be extended after {allow_extend_after}s; "
+                    f"try again in {allow_extend_after - elapsed}s"
+                )
+
+        self.registry.extend_ttl(session_id, extend_by)
 
     def access_info(self, session_id: str) -> Dict[str, Any]:
         if not session_id:
@@ -146,7 +204,7 @@ class ClusterService:
 
     def running_clusters(self) -> List[Dict[str, Any]]:
         result = []
-        for session_id, cluster in self.registry.items():
+        for session_id, (cluster, _, _) in self.registry.items():
             cluster_id = cluster.db_id
             cluster_db = ClusterModel.query.filter_by(id=cluster_id).first()
             if not cluster_db:
@@ -169,7 +227,9 @@ class ClusterService:
         overall = {"cpu": host_cpu_percent, "memory": 0, "network": {"rx": 0, "tx": 0}}
         clusters_list = []
 
-        for session_id, cluster in self.registry.items():
+        now = datetime.now()
+
+        for session_id, (cluster, _, expires_at) in self.registry.items():
             try:
                 res = cluster.get_resource_usage()
                 total = res.get("total", {})
@@ -182,6 +242,9 @@ class ClusterService:
                         "session_id": str(session_id),
                         "cluster_id": str(cluster_id),
                         "cluster_name": cluster_db.name if cluster_db else None,
+                        "ttl_remaining_seconds": self._ttl_remaining_seconds(
+                            expires_at, now=now
+                        ),
                         "resources": total,
                     }
                 )

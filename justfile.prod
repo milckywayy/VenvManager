@@ -1,7 +1,7 @@
 set shell := ["bash", "-c"]
 export COMPOSE_FILE := "docker-compose.prod.yml"
 export FLASK_ENV := "production"
-
+export LOG_DIR := "./.logs"
 
 default:
     @just --list
@@ -13,15 +13,32 @@ up-db:
     docker compose up -d --remove-orphans
 
 up-admin: up-db
+    mkdir -p {{LOG_DIR}}
     -screen -S vm_manager_admin_prod -X quit
-    screen -dmS vm_manager_admin_prod bash -c 'exec gunicorn "app:create_app_admin()" --bind 0.0.0.0:8000 --workers 1'
-    @echo "Admin application started"
+    screen -dmS vm_manager_admin_prod bash -lc '\
+        set -o pipefail; \
+        exec gunicorn "app:create_app_admin()" \
+            --bind 0.0.0.0:8000 \
+            --workers 1 \
+            --access-logfile - \
+            --error-logfile - \
+        2>&1 | tee -a {{LOG_DIR}}/admin.log \
+    '
+    @echo "Admin application started (logs: {{LOG_DIR}}/admin.log)"
 
 up-api: up-db
+    mkdir -p {{LOG_DIR}}
     -screen -S vm_manager_api_prod -X quit
-    screen -dmS vm_manager_api_prod bash -c 'exec gunicorn "app:create_app_api()" --bind 0.0.0.0:8080 --workers 4'
-    @echo "API application started"
-
+    screen -dmS vm_manager_api_prod bash -lc '\
+        set -o pipefail; \
+        exec gunicorn "app:create_app_api()" \
+            --bind 0.0.0.0:8080 \
+            --workers 4 \
+            --access-logfile - \
+            --error-logfile - \
+        2>&1 | tee -a {{LOG_DIR}}/api.log \
+    '
+    @echo "API application started (logs: {{LOG_DIR}}/api.log)"
 
 up: up-admin up-api
     @echo "Production application started"
@@ -35,12 +52,10 @@ down:
     @echo "Production application and containers have been stopped"
 
 logs:
-    screen -S vm_manager_api_prod -X hardcopy -h /tmp/vm_manager_api_prod.log
-    cat /tmp/vm_manager_api_prod.log
+    tail -n 200 -f {{LOG_DIR}}/api.log
 
 logs-admin:
-    screen -S vm_manager_admin_prod -X hardcopy -h /tmp/vm_manager_admin_prod.log
-    cat /tmp/vm_manager_admin_prod.log
+    tail -n 200 -f {{LOG_DIR}}/admin.log
 
 prune:
     @docker compose down -v

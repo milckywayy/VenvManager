@@ -1,4 +1,7 @@
+import json
 import logging
+from urllib.parse import urljoin
+from flask_cors import CORS
 from flask import Flask
 from flask_migrate import Migrate
 import os
@@ -23,6 +26,11 @@ def _build_db_url() -> str:
     host = os.getenv("DB_HOST", "localhost")
     port = os.getenv("DB_PORT", "5432")
     return f"postgresql+psycopg2://{user}:{pwd}@{host}:{port}/{name}"
+
+
+def get_api_url(endpoint: str = "") -> str:
+    base = os.getenv("API_BASE_URL").rstrip("/") + "/"
+    return urljoin(base, endpoint.lstrip("/"))
 
 
 def create_app() -> Flask:
@@ -55,15 +63,21 @@ def create_app() -> Flask:
 def create_app_admin():
     app = create_app()
 
+    @app.context_processor
+    def inject_api_url():
+        return {"get_api_url": get_api_url}
+
     app.register_blueprint(main_bp)
     app.register_blueprint(creator_bp)
-    app.register_blueprint(api_bp)
 
     return app
 
 
 def create_app_api():
     app = create_app()
+
+    origins = json.loads(os.getenv("CORS_ORIGINS", "[]"))
+    CORS(app, origins=origins)
 
     app.register_blueprint(api_bp)
 

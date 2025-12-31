@@ -95,6 +95,26 @@ def stop():
         return jsonify({"error": str(e)}), 404
 
 
+@api_bp.route("/extend_ttl", methods=["POST"])
+def extend_ttl():
+    try:
+        session_id = _get_session_id()
+        _service.extend_ttl(session_id)
+
+        result = _service.status(session_id)
+        return jsonify(
+            {
+                "status": "extended",
+                "ttl_remaining_seconds": result["ttl_remaining_seconds"],
+            }
+        ), 200
+
+    except ValidationError as e:
+        return jsonify({"error": str(e)}), 400
+    except NotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+
+
 @api_bp.route("/running_clusters", methods=["GET"])
 def running_clusters():
     return jsonify(_service.running_clusters()), 200

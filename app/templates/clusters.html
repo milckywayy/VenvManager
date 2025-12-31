@@ -51,7 +51,7 @@
     return new Promise((resolve, reject) => {
       const interval = setInterval(async () => {
         try {
-          const res = await fetch("/api/status", {
+          const res = await fetch("{{get_api_url('status')}}", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ session_id: sessionId })
@@ -61,6 +61,7 @@
           const statuses = Object.values(data.statuses);
           const allRunning = statuses.length > 0 && statuses.every(s => s === "running");
           if (allRunning) {
+              console.log("Time remaining: ", data.ttl_remaining_seconds);
             clearInterval(interval);
             resolve(data);
           }
@@ -104,13 +105,13 @@
     });
   }
 
-  async function callApi(url, opts, btn){
+  async function callApi(endpoint, opts, btn){
     const row = btn?.closest?.('[data-cluster-row]') || null;
     try {
       if (btn){ btn.disabled = true; btn.dataset.loading = '1' }
       if (row) setRowBusy(row, true);
 
-      const res = await fetch(url, opts);
+      const res = await fetch("{{get_api_url()}}" + endpoint, opts);
       const data = await res.json().catch(()=>({}));
       if (!res.ok) throw new Error(data?.error || res.statusText || 'Request failed');
       return data;
@@ -141,7 +142,7 @@
       updateRunningUI();
 
       const data = await callApi(
-        `/api/run/${clusterId}`,
+        `run/${clusterId}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -152,7 +153,7 @@
 
       await waitUntilRunning(sessionId);
 
-      const res = await fetch("{{ url_for('api.access_info') }}", {
+      const res = await fetch("{{ get_api_url('access_info') }}", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: sessionId })
@@ -172,7 +173,7 @@
   async function restartCluster(btn){
     try {
       await callApi(
-        `/api/restart`,
+        `restart`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -189,7 +190,7 @@
     const row = btn.closest('[data-cluster-row]');
     try {
       await callApi(
-        `/api/stop`,
+        `stop`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -249,7 +250,7 @@
   }
 
   async function detectRunningCluster(){
-    const STATUS_URL = '/api/status';
+    const STATUS_URL = "{{ get_api_url('status') }}";
     try {
       const res = await fetch(STATUS_URL, {
         method: 'POST',

@@ -136,6 +136,7 @@
             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Session ID</th>
             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Cluster Name</th>
             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Cluster ID</th>
+            <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Time left</th>
             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Memory</th>
             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Network RX / TX</th>
           </tr>
@@ -258,6 +259,13 @@
 
       <td class="px-4 py-3 text-center">
         <div class="text-xs text-gray-600 dark:text-gray-300">
+          ${escapeHtml(c.ttl_remaining_seconds || "—")}
+          s
+        </div>
+      </td>
+
+      <td class="px-4 py-3 text-center">
+        <div class="text-xs text-gray-600 dark:text-gray-300">
           ${fmt.mib(mem)}
         </div>
       </td>
@@ -308,7 +316,7 @@
         showBarSkeleton(els.hostCpuBar, els.hostMemBar, els.clustersCountBar, els.overallMemBar);
       }
 
-      const resp = await fetch("/api/resources/summary", { cache: "no-store" });
+      const resp = await fetch("{{ get_api_url('resources/summary') }}", { cache: "no-store" });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const data = await resp.json();
 

@@ -48,7 +48,7 @@ class DockerEnvironment(Environment):
         nets = self.container.attrs.get("NetworkSettings", {}).get("Networks", {})
         net_name = self.docker_network.name
         if net_name in nets:
-            return nets[net_name].get("IPAddress") or None  # IPv4
+            return nets[net_name].get("IPAddress") or None
         for data in nets.values():
             if data.get("IPAddress"):
                 return data["IPAddress"]
