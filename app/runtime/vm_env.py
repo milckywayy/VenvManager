@@ -1,5 +1,4 @@
 import os
-import subprocess
 import threading
 import time
 import uuid
@@ -96,21 +95,26 @@ class VMEnvironment(Environment):
             xml_desc = self.domain.XMLDesc()
             root = ET.fromstring(xml_desc)
 
+            mac = None
             for interface in root.findall(".//devices/interface"):
-                source = interface.find("source")
-                if (
-                    source is not None
-                    and source.attrib.get("bridge") == self.network_name
-                ):
-                    mac_elem = interface.find("mac")
-                    if mac_elem is not None:
-                        mac = mac_elem.attrib.get("address").lower()
+                mac_elem = interface.find("mac")
+                if mac_elem is not None:
+                    mac = mac_elem.attrib.get("address", "").lower()
+                    break
+            if not mac:
+                return None
 
-                        output = subprocess.check_output(["ip", "neigh"]).decode()
-                        for line in output.splitlines():
-                            if mac in line.lower():
-                                return line.split()[0]
+            net = self.libvirt_client.networkLookupByName(self.network_name)
+            leases = net.DHCPLeases() or []
+
+            for lease in leases:
+                if (lease.get("mac") or "").lower() == mac:
+                    return lease.get("ipaddr") or None
+
             return None
+
+        except Exception as e:
+            raise VMEnvException(f"Failed to retrieve IP address via DHCP leases: {e}")
 
         except Exception as e:
             raise VMEnvException(f"Failed to retrieve IP address: {e}")
